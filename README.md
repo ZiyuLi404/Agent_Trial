@@ -1,21 +1,55 @@
-# Agent_Trial
-# Problem Formulation
+# Version-Aware Adaptive Trial Framework for Clinical AI Agents
 
-## 1. Research Problem
+## Overview
 
-This project studies how to evaluate clinical AI agents that may change over time during a clinical trial.
+This project studies how to evaluate **clinical AI agents that may change over time during a clinical trial**.
 
-Traditional randomized controlled trials usually assume that the intervention remains fixed throughout the study. However, modern clinical AI agents are often updated continuously. Their behavior may change because of model upgrades, prompt modifications, retrieval changes, tool-use changes, planner updates, or workflow redesign. Therefore, treating the AI agent as a fixed intervention may lead to biased or invalid evaluation results.
+Traditional randomized controlled trials usually assume that the intervention remains fixed throughout the study. However, modern clinical AI agents are often updated continuously. Their behavior may change because of model upgrades, prompt modifications, retrieval changes, tool-use changes, planner updates, or workflow redesign.
 
-The goal of this project is to design a **version-aware adaptive trial framework** for evaluating non-stationary clinical AI agents. The framework should detect meaningful changes in agent behavior, split the trial into version-specific epochs, and estimate the treatment effect of each agent version using concurrent control data.
+Therefore, treating the AI agent as a fixed intervention may lead to biased or invalid evaluation results.
+
+The goal of this project is to design a **version-aware adaptive trial framework** for evaluating non-stationary clinical AI agents. The framework should:
+
+- Detect meaningful changes in agent behavior
+- Split the trial into version-specific epochs
+- Estimate the treatment effect of each agent version using concurrent control data
 
 ---
 
-## 2. Clinical Task Definition
+## Table of Contents
 
-The clinical task is defined as:
+- [Overview](#overview)
+- [Research Problem](#research-problem)
+- [Clinical Task Definition](#clinical-task-definition)
+- [Intervention Definition](#intervention-definition)
+- [Agent Version Definition](#agent-version-definition)
+- [Update Definition](#update-definition)
+- [Outcome Definition](#outcome-definition)
+- [Treatment Effect Definition](#treatment-effect-definition)
+- [Why Concurrent Control Is Necessary](#why-concurrent-control-is-necessary)
+- [Notation](#notation)
+- [Prototype Setting](#prototype-setting)
+- [Summary](#summary)
 
-> Sequential diagnostic workup / triage.
+---
+
+## Research Problem
+
+This project focuses on the following question:
+
+> How should we evaluate a clinical AI agent when the agent may change during the trial?
+
+In many clinical trials, the treatment is assumed to be stable. However, a clinical AI agent may be updated during deployment. These updates can change the agent's behavior and may affect clinical outcomes.
+
+As a result, the project treats the AI agent as a **time-varying intervention**, rather than a fixed intervention.
+
+---
+
+## Clinical Task Definition
+
+The clinical task is:
+
+> **Sequential diagnostic workup and triage**
 
 In this task, a patient case is presented to the system step by step. At each step, the agent receives the currently available clinical information and decides what to do next.
 
@@ -63,7 +97,7 @@ Recommend urgent evaluation.
 
 ---
 
-## 3. Intervention Definition
+## Intervention Definition
 
 The intervention is not defined as only the language model itself.
 
@@ -85,7 +119,7 @@ triage recommendation policy
 
 Therefore, an update to any important component of this system may change the behavior of the intervention.
 
-We define the treatment intervention as:
+The treatment intervention is defined as:
 
 > A versioned clinical AI system that assists with sequential diagnostic workup and triage.
 
@@ -97,24 +131,15 @@ frozen baseline agent
 standard non-updating clinical AI system
 ```
 
-For the first prototype, we use:
-
-```text
-control = frozen baseline agent
-treatment = live updating agent
-```
-
-This makes the experiment easier to simulate and implement.
-
 ---
 
-## 4. Agent Version Definition
+## Agent Version Definition
 
-Let the clinical AI agent at time \(t\) be represented as a time-varying policy:
+Let the clinical AI agent at time `t` be represented as a time-varying policy:
 
-\[
+$$
 \pi_t(a \mid x)
-\]
+$$
 
 where:
 
@@ -126,21 +151,19 @@ a = agent action
 
 Because the agent may change over time, we do not assume that:
 
-\[
+$$
 \pi_1 = \pi_2 = \cdots = \pi_T
-\]
+$$
 
 Instead, we assume that the agent may have different versions:
 
-\[
+$$
 \pi^{(1)}, \pi^{(2)}, \pi^{(3)}, \ldots, \pi^{(V)}
-\]
+$$
 
-Each version corresponds to a period of relatively stable behavior.
+Each version corresponds to a period of relatively stable behavior. This period is called an **epoch**.
 
-We call this period an **epoch**.
-
-For example:
+Example:
 
 ```text
 Epoch 1: version v1 is active
@@ -150,13 +173,13 @@ Epoch 3: version v3 is active
 
 ---
 
-## 5. Update Definition
+## Update Definition
 
 An update means that the clinical AI system has changed in a way that may affect its behavior.
 
-We define three types of updates.
+This project defines three types of updates.
 
-### 5.1 Declared Update
+### 1. Declared Update
 
 A declared update occurs when the developer or system provider explicitly announces that the agent has changed.
 
@@ -169,7 +192,7 @@ new retrieval database added
 new clinical workflow deployed
 ```
 
-### 5.2 Configuration Update
+### 2. Configuration Update
 
 A configuration update occurs when an internal component changes, even if the base LLM is the same.
 
@@ -184,9 +207,9 @@ UI workflow changed
 threshold for triage recommendation changed
 ```
 
-### 5.3 Hidden Behavioral Update
+### 3. Hidden Behavioral Update
 
-A hidden behavioral update occurs when there is no public announcement, but the agent’s behavior changes noticeably.
+A hidden behavioral update occurs when there is no public announcement, but the agent's behavior changes noticeably.
 
 For example, on the same fixed set of anchor cases, the agent may start giving different diagnoses, ordering different tests, or making different triage recommendations.
 
@@ -194,13 +217,13 @@ This type of update is important because real-world clinical AI systems may chan
 
 ---
 
-## 6. Outcome Definition
+## Outcome Definition
 
-We evaluate the agent using several clinical outcomes.
+The agent is evaluated using several clinical outcomes.
 
-For the first prototype, we use three main outcomes.
+For the first prototype, this project uses three main outcomes.
 
-### 6.1 Diagnosis Accuracy
+### 1. Diagnosis Accuracy
 
 Diagnosis accuracy measures whether the agent reaches the correct diagnosis.
 
@@ -209,13 +232,13 @@ Diagnosis accuracy = 1 if the diagnosis is correct
 Diagnosis accuracy = 0 otherwise
 ```
 
-Higher is better.
+Higher diagnosis accuracy is better.
 
-### 6.2 Unsafe Miss Rate
+### 2. Unsafe Miss Rate
 
 Unsafe miss rate measures whether the agent misses a dangerous condition or gives an unsafe recommendation.
 
-For example:
+Examples include:
 
 ```text
 sending home a patient with possible acute coronary syndrome
@@ -231,13 +254,13 @@ unsafe_miss = 1 if the agent makes an unsafe miss
 unsafe_miss = 0 otherwise
 ```
 
-Lower is better.
+Lower unsafe miss rate is better.
 
-### 6.3 Test Cost / Number of Tests
+### 3. Test Cost / Number of Tests
 
 Test cost measures how many diagnostic tests the agent orders, or the total cost of ordered tests.
 
-For example:
+Example cost units:
 
 ```text
 ECG = 1 unit
@@ -246,15 +269,13 @@ CT scan = 3 units
 MRI = 4 units
 ```
 
-Lower test cost is not always better, because ordering too few tests may increase unsafe misses.
-
-Therefore, this outcome should be interpreted together with diagnosis accuracy and unsafe miss rate.
+Lower test cost is not always better, because ordering too few tests may increase unsafe misses. Therefore, this outcome should be interpreted together with diagnosis accuracy and unsafe miss rate.
 
 ---
 
-## 7. Treatment Effect Definition
+## Treatment Effect Definition
 
-For each agent version \(v\), we estimate the treatment effect using only the cases from the same epoch.
+For each agent version `v`, we estimate the treatment effect using only the cases from the same epoch.
 
 Let:
 
@@ -266,25 +287,25 @@ A_i = 0 means control group
 E_v = epoch where version v is active
 ```
 
-The treatment effect for version \(v\) is:
+The treatment effect for version `v` is:
 
-\[
+$$
 \tau_v = \mathbb{E}[Y_i \mid A_i = 1, i \in E_v] - \mathbb{E}[Y_i \mid A_i = 0, i \in E_v]
-\]
+$$
 
 In words:
 
-> The treatment effect of version \(v\) is the difference between the treatment group and the control group among cases enrolled during the same version-specific epoch.
+> The treatment effect of version `v` is the difference between the treatment group and the control group among cases enrolled during the same version-specific epoch.
 
-This is important because version \(v\) should only be compared with concurrent control cases from the same time period.
+This is important because version `v` should only be compared with concurrent control cases from the same time period.
 
 ---
 
-## 8. Why Concurrent Control Is Necessary
+## Why Concurrent Control Is Necessary
 
 If the agent changes over time, using old control data may be misleading.
 
-For example:
+Example:
 
 ```text
 Version v1 is used in January.
@@ -293,7 +314,7 @@ Patient cases in January may be different from patient cases in March.
 Clinical practice may also change over time.
 ```
 
-If we compare March treatment cases with January control cases, the estimated treatment effect may reflect time trends or patient distribution changes rather than the true effect of the new agent version.
+If March treatment cases are compared with January control cases, the estimated treatment effect may reflect time trends or patient distribution changes rather than the true effect of the new agent version.
 
 Therefore, for each version, the primary comparison should use:
 
@@ -306,27 +327,54 @@ Historical data may be used only for secondary analysis or efficiency improvemen
 
 ---
 
-## 9. Notation Table
+## Notation
 
 | Symbol | Meaning |
 |---|---|
-| \(i\) | Patient case index |
-| \(t\) | Time index |
-| \(x_i\) | Clinical context of patient case \(i\) |
-| \(a_i\) | Agent action for case \(i\) |
-| \(Y_i\) | Outcome for case \(i\) |
-| \(A_i\) | Trial arm assignment |
-| \(A_i = 1\) | Treatment group |
-| \(A_i = 0\) | Control group |
-| \(\pi_t\) | Agent policy at time \(t\) |
-| \(\pi^{(v)}\) | Agent policy for version \(v\) |
-| \(E_v\) | Epoch where version \(v\) is active |
-| \(\tau_v\) | Treatment effect of version \(v\) |
+| $i$ | Patient case index |
+| $t$ | Time index |
+| $x_i$ | Clinical context of patient case `i` |
+| $a_i$ | Agent action for case `i` |
+| $Y_i$ | Outcome for case `i` |
+| $A_i$ | Trial arm assignment |
+| $A_i = 1$ | Treatment group |
+| $A_i = 0$ | Control group |
+| $\pi_t$ | Agent policy at time `t` |
+| $\pi^{(v)}$ | Agent policy for version `v` |
+| $E_v$ | Epoch where version `v` is active |
+| $\tau_v$ | Treatment effect of version `v` |
 
 ---
 
-## 10. Summary
+## Prototype Setting
 
-This project evaluates a clinical AI agent that may continuously change over time. The agent is modeled as a time-varying policy rather than a fixed intervention. When the agent changes, the trial should detect the change, split the study into version-specific epochs, and estimate each version's effect using concurrent control data.
+For the first prototype, the trial setting is:
 
-In the first prototype, the project will use a frozen baseline agent as the control arm and a live updating agent as the treatment arm. The main outcomes will be diagnosis accuracy, unsafe miss rate, and test cost.
+```text
+control = frozen baseline agent
+treatment = live updating agent
+```
+
+This setting makes the experiment easier to simulate and implement while still capturing the main challenge of evaluating a changing AI system.
+
+The main outcomes are:
+
+```text
+diagnosis accuracy
+unsafe miss rate
+test cost / number of tests
+```
+
+---
+
+## Summary
+
+This project evaluates a clinical AI agent that may continuously change over time. The agent is modeled as a time-varying policy rather than a fixed intervention.
+
+When the agent changes, the trial should detect the change, split the study into version-specific epochs, and estimate each version's effect using concurrent control data.
+
+The key idea is:
+
+> Each agent version should be evaluated against control cases from the same time period.
+
+This helps avoid bias caused by time trends, patient distribution changes, or changes in clinical practice.
