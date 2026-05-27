@@ -3,3 +3,15 @@ results/*
 *_results*.py
 *.out
 
+# Local environment / secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# OS junk
+.DS_Store
+
+# Experiment outputs — keep these local, don't bloat the repo
+anchor_compare_*.json
+trial_log.jsonl
+

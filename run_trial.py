@@ -1,11 +1,18 @@
 import argparse
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Warning: python-dotenv not installed; .env will not be auto-loaded. "
+          "Run `pip install python-dotenv` or set keys via export/CLI flags.")
+
 from version_manager import get_current_version, open_new_version
 from trial_manager import stream_cases, run_case
 from logger import log_case
 
-CONTROL_MODEL = "deepseek-chat"
+CONTROL_MODEL = "deepseek-v4-flash"
 
 
 def main():

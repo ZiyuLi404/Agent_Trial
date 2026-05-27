@@ -23,11 +23,11 @@ This means reported accuracy reflects only cases where the two agents reached co
 
 ## Control Strategy
 
-A single frozen control model (`deepseek-chat` by default, set via `CONTROL_MODEL` in `run_trial.py`) is maintained across all epochs. Treatment versions change sequentially. Each treatment version is evaluated against concurrent control cases from the same time window — not against a version-specific control pool.
+A single frozen control model (`deepseek-v4-flash` by default, set via `CONTROL_MODEL` in `run_trial.py`) is maintained across all epochs. Treatment versions change sequentially. Each treatment version is evaluated against concurrent control cases from the same time window — not against a version-specific control pool.
 
 | Role | Configured by | Changes over time? |
 |---|---|---|
-| Control doctor | `--control_llm` (default: `deepseek-chat`) | No — frozen for all epochs |
+| Control doctor | `--control_llm` (default: `deepseek-v4-flash`) | No — frozen for all epochs |
 | Treatment doctor | `--doctor_llm` | Yes — updates with each `--new_version` call |
 | Patient / Measurement / Moderator | `--patient_llm` / `--measurement_llm` / `--moderator_llm` | Shared across both arms |
 
@@ -60,33 +60,41 @@ conda activate agenttrial
 pip install -r requirements.txt
 ```
 
-Set API keys for whichever providers you use:
+### API keys (`.env` file — recommended for team collaboration)
+
+Copy the template and fill in your own keys:
 
 ```bash
-export DEEPSEEK_API_KEY=your_key
-export OPENAI_API_KEY=your_key
-export ANTHROPIC_API_KEY=your_key
-export REPLICATE_API_TOKEN=your_token
+cp .env.example .env
+# edit .env with your real keys
 ```
 
-Different models require different keys. DeepSeek models need `DEEPSEEK_API_KEY`; GPT models need `OPENAI_API_KEY`; Claude models need `ANTHROPIC_API_KEY`.
+`.env` is gitignored, so each collaborator keeps their own keys locally. Both `run_trial.py` and `agentclinic_anchor_compare.py` call `python-dotenv` at startup, so anything in `.env` is automatically loaded into the process environment — no need to `source` or `export` manually.
+
+To add a new provider, append a line like `NEW_PROVIDER_API_KEY=...` to both `.env` (your real key) and `.env.example` (empty placeholder, committed for the team).
+
+Different models require different keys: DeepSeek models need `DEEPSEEK_API_KEY`; GPT models need `OPENAI_API_KEY`; Claude models need `ANTHROPIC_API_KEY`; Llama / Mixtral on Replicate need `REPLICATE_API_TOKEN`.
+
+If you prefer not to use `.env`, you can still `export` the variables in your shell or pass them as CLI flags (`--deepseek_api_key`, `--openai_api_key`, etc.) — but CLI flags get recorded in shell history and are visible in `ps`, so avoid them for real keys.
 
 ---
 
 ## Running Trials
 
-### Start version v1 — treatment: deepseek-v4-flash, control: deepseek-chat (frozen)
+### Start version v1 — treatment: deepseek-v4-flash, control: deepseek-v4-flash (frozen)
+
+> v1 intentionally uses the same model for treatment and control. This is a **calibration epoch** that verifies the trial pipeline produces near-identical results when no real difference exists, before introducing a real treatment change in v2.
 
 ```bash
 python run_trial.py \
   --new_version --version_id v1 --model_name deepseek-v4-flash \
   --prompt_version p1 --tool_version t1 \
   --deepseek_api_key $DEEPSEEK_API_KEY \
-  --control_llm deepseek-chat \
+  --control_llm deepseek-v4-flash \
   --doctor_llm deepseek-v4-flash \
-  --patient_llm deepseek-chat \
-  --measurement_llm deepseek-chat \
-  --moderator_llm deepseek-chat \
+  --patient_llm deepseek-v4-flash \
+  --measurement_llm deepseek-v4-flash \
+  --moderator_llm deepseek-v4-flash \
   --dataset MedQA --num_cases 20 --total_inferences 10
 ```
 
@@ -95,7 +103,7 @@ python run_trial.py \
 ```bash
 python run_trial.py \
   --deepseek_api_key $DEEPSEEK_API_KEY \
-  --control_llm deepseek-chat \
+  --control_llm deepseek-v4-flash \
   --doctor_llm deepseek-v4-flash \
   --dataset MedQA --num_cases 20
 ```
@@ -107,11 +115,11 @@ python run_trial.py \
   --new_version --version_id v2 --model_name deepseek-v4-pro \
   --prompt_version p1 --tool_version t1 \
   --deepseek_api_key $DEEPSEEK_API_KEY \
-  --control_llm deepseek-chat \
+  --control_llm deepseek-v4-flash \
   --doctor_llm deepseek-v4-pro \
-  --patient_llm deepseek-chat \
-  --measurement_llm deepseek-chat \
-  --moderator_llm deepseek-chat \
+  --patient_llm deepseek-v4-flash \
+  --measurement_llm deepseek-v4-flash \
+  --moderator_llm deepseek-v4-flash \
   --dataset MedQA --num_cases 20 --total_inferences 10
 ```
 
@@ -121,7 +129,7 @@ Each call appends to `trial_log.jsonl`. Every record is tagged with `version_id`
 
 | Argument | Default | Description |
 |---|---|---|
-| `--control_llm` | `deepseek-chat` | Frozen control doctor model (fixed across all epochs) |
+| `--control_llm` | `deepseek-v4-flash` | Frozen control doctor model (fixed across all epochs) |
 | `--doctor_llm` | `deepseek-v4-pro` | Treatment doctor model (changes with each version) |
 | `--patient_llm` | `deepseek-v4-flash` | Patient agent model |
 | `--measurement_llm` | `deepseek-v4-flash` | Measurement agent model |
@@ -149,7 +157,7 @@ Each call appends to `trial_log.jsonl`. Every record is tagged with `version_id`
   "timestamp": "2026-05-18T14:03:22.418Z",
   "version_id": "v1",
   "arm": "control",
-  "control_model": "deepseek-chat",
+  "control_model": "deepseek-v4-flash",
   "treatment_version": "v1",
   "treatment_model": "deepseek-v4-flash",
   "diagnosis": "DIAGNOSIS READY: Pneumonia",
@@ -180,7 +188,7 @@ Each call appends to `trial_log.jsonl`. Every record is tagged with `version_id`
 
 | Model | Provider |
 |---|---|
-| `deepseek-chat`, `deepseek-reasoner`, `deepseek-v4-flash`, `deepseek-v4-pro` | DeepSeek |
+| `deepseek-v4-flash`, `deepseek-v4-pro` (and legacy aliases `deepseek-chat`, `deepseek-reasoner`) | DeepSeek |
 | `gpt4`, `gpt4o`, `gpt-4o-mini`, `gpt3.5`, `o1-preview` | OpenAI |
 | `claude3.5sonnet` | Anthropic |
 | `llama-2-70b-chat`, `llama-3-70b-instruct`, `mixtral-8x7b` | Replicate |

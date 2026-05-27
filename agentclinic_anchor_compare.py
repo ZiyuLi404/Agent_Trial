@@ -5,7 +5,14 @@ import random
 import time
 import json
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Warning: python-dotenv not installed; .env will not be auto-loaded. "
+          "Run `pip install python-dotenv` or set keys via export/CLI flags.")
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "AgentClinic")
 
 try:
     import anthropic
@@ -121,8 +128,8 @@ def query_model(
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": prompt},
                     ],
-                    temperature=0.05,
-                    max_tokens=200,
+                    temperature=0,
+                    max_tokens=2000,
                     stream=False,
                 )
                 return normalize_answer(response.choices[0].message.content)
@@ -163,7 +170,7 @@ def query_model(
                 response = client.chat.completions.create(
                     model=api_model,
                     messages=messages,
-                    temperature=0.05,
+                    temperature=0,
                     max_tokens=200,
                 )
                 return normalize_answer(response.choices[0].message.content)
@@ -251,7 +258,7 @@ class ScenarioMedQA:
 
 class ScenarioLoaderMedQA:
     def __init__(self) -> None:
-        with open(os.path.join(_HERE, "agentclinic_medqa.jsonl"), "r") as f:
+        with open(os.path.join(DATA_DIR, "agentclinic_medqa.jsonl"), "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioMedQA(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -291,7 +298,7 @@ class ScenarioMedQAExtended:
 
 class ScenarioLoaderMedQAExtended:
     def __init__(self) -> None:
-        with open(os.path.join(_HERE, "agentclinic_medqa_extended.jsonl"), "r") as f:
+        with open(os.path.join(DATA_DIR, "agentclinic_medqa_extended.jsonl"), "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioMedQAExtended(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -331,7 +338,7 @@ class ScenarioMIMICIVQA:
 
 class ScenarioLoaderMIMICIV:
     def __init__(self) -> None:
-        with open(os.path.join(_HERE, "agentclinic_mimiciv.jsonl"), "r") as f:
+        with open(os.path.join(DATA_DIR, "agentclinic_mimiciv.jsonl"), "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioMIMICIVQA(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -371,7 +378,7 @@ class ScenarioNEJMExtended:
 
 class ScenarioLoaderNEJMExtended:
     def __init__(self) -> None:
-        with open(os.path.join(_HERE, "agentclinic_nejm_extended.jsonl"), "r") as f:
+        with open(os.path.join(DATA_DIR, "agentclinic_nejm_extended.jsonl"), "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioNEJMExtended(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -411,7 +418,7 @@ class ScenarioNEJM:
 
 class ScenarioLoaderNEJM:
     def __init__(self) -> None:
-        with open(os.path.join(_HERE, "agentclinic_nejm.jsonl"), "r") as f:
+        with open(os.path.join(DATA_DIR, "agentclinic_nejm.jsonl"), "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioNEJM(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -499,7 +506,7 @@ class PatientAgent:
 
 
 class DoctorAgent:
-    def __init__(self, scenario, backend_str="gpt4", max_infs=20, bias_present=None, img_request=False) -> None:
+    def __init__(self, scenario, backend_str="gpt4", max_infs=20, bias_present=None, img_request=False, output_format="normal") -> None:
         # number of inference calls to the doctor
         self.infs = 0
         # maximum number of inference calls to the doctor
@@ -517,6 +524,7 @@ class DoctorAgent:
         self.reset()
         self.pipe = None
         self.img_request = img_request
+        self.output_format = output_format
         self.biases = ["recency", "frequency", "false_consensus", "confirmation", "status_quo", "gender", "race", "sexual_orientation", "cultural", "education", "religion", "socioeconomic"]
 
     def generate_bias(self) -> str:
@@ -568,6 +576,8 @@ class DoctorAgent:
         if self.bias_present is not None:
             bias_prompt = self.generate_bias()
         base = "You are a doctor named Dr. Agent who only responds in the form of dialogue. You are inspecting a patient who you will ask questions in order to understand their disease. You are only allowed to ask {} questions total before you must make a decision. You have asked {} questions so far. You can request test results using the format \"REQUEST TEST: [test]\". For example, \"REQUEST TEST: Chest_X-Ray\". Your dialogue will only be 1-3 sentences in length. Once you have decided to make a diagnosis please type \"DIAGNOSIS READY: [diagnosis here]\"".format(self.MAX_INFS, self.infs) + ("You may also request medical images related to the disease to be returned with \"REQUEST IMAGES\"." if self.img_request else "")
+        if self.output_format == "anchor_compare":
+            base += "\nFor version-equivalence testing, when you are ready to diagnose, use exactly this structured format:\nDIAGNOSIS READY: <single most likely diagnosis>\nCANDIDATES: <diagnosis 1>; <diagnosis 2>; <diagnosis 3>\nKEY EVIDENCE: <brief evidence separated by semicolons>"
         presentation = "\n\nBelow is all of the information you have. {}. \n\n Remember, you must discover their disease by asking them questions. You are also able to provide exams.".format(self.presentation)
         return base + bias_prompt + presentation
 
@@ -608,148 +618,509 @@ class MeasurementAgent:
         self.information = self.scenario.exam_information()
 
 
-
-
-class ReviewerAgent:
-    """
-    A second diagnostic agent.
-
-    This agent does not ask the patient questions. It reviews the full doctor-patient
-    dialogue after the doctor finishes, then independently gives a final diagnosis.
-    """
-    def __init__(self, scenario, backend_str="gpt4") -> None:
-        self.backend = backend_str
-        self.scenario = scenario
-
-    def system_prompt(self) -> str:
-        return (
-            "You are a senior physician reviewer. You do not interview the patient directly. "
-            "You read the complete dialogue between the doctor, patient, and measurement reader, "
-            "then make an independent diagnosis. "
-            "Your answer must use exactly this format: \"DIAGNOSIS READY: [diagnosis here]\". "
-            "Do not include explanations unless explicitly asked."
-        )
-
-    def inference_reviewer_diagnosis(self, full_dialogue) -> str:
-        prompt = (
-            "\nHere is the complete doctor-patient dialogue and available test information:\n"
-            + full_dialogue
-            + "\n\nBased only on this information, give your independent final diagnosis.\n"
-        )
-        return query_model(
-            self.backend,
-            prompt,
-            self.system_prompt(),
-            clip_prompt=True,
-        )
-
-    def inference_reviewer_discussion(self, full_dialogue, doctor_diagnosis, reviewer_diagnosis, discussion_history) -> str:
-        prompt = (
-            "\nOriginal full dialogue:\n" + full_dialogue
-            + "\n\nDoctor's diagnosis: " + doctor_diagnosis
-            + "\nReviewer's diagnosis: " + reviewer_diagnosis
-            + "\n\nDiscussion so far:\n" + discussion_history
-            + "\n\nRespond to the doctor. Explain briefly why you agree or disagree, and propose what evidence matters most."
-        )
-        return query_model(
-            self.backend,
-            prompt,
-            "You are the senior physician reviewer discussing a disagreement with the interviewing doctor. Keep your reply concise, clinical, and evidence-based.",
-            clip_prompt=True,
-        )
-
-
-def extract_diagnosis_text(diagnosis_response):
-    """
-    Convert 'DIAGNOSIS READY: pneumonia' into 'pneumonia'.
-    If the format is imperfect, keep the full response instead of crashing.
-    """
-    if diagnosis_response is None:
-        return ""
-    text = normalize_answer(diagnosis_response)
-    match = re.search(r"DIAGNOSIS\s+READY\s*:\s*(.*)", text, flags=re.IGNORECASE)
-    if match:
-        return normalize_answer(match.group(1))
-    return text
-
-
-def force_doctor_final_diagnosis(doctor_llm, scenario, full_dialogue):
-    """
-    Used when the question-answer loop ends but the doctor has not produced
-    DIAGNOSIS READY. This enforces that every scenario gets a doctor conclusion.
-    """
-    prompt = (
-        "\nHere is the complete dialogue so far:\n"
-        + full_dialogue
-        + "\n\nThe interviewing period is over. Give exactly one final diagnosis now."
-    )
-    system_prompt = (
-        "You are the interviewing doctor. You must now provide your final diagnosis. "
-        "Your answer must use exactly this format: \"DIAGNOSIS READY: [diagnosis here]\". "
-        "Do not ask more questions."
-        "\n\nInitial objective/context for the doctor:\n"
-        + str(scenario.examiner_information())
-    )
-    return query_model(doctor_llm, prompt, system_prompt, clip_prompt=True)
-
-
-def discussion_between_doctor_and_reviewer(
-    doctor_llm,
-    reviewer_agent,
-    full_dialogue,
-    doctor_diagnosis,
-    reviewer_diagnosis,
-    rounds=5,
-):
-    """
-    If the doctor and reviewer disagree, they discuss for a fixed number of rounds.
-    This scenario is excluded from accuracy calculation, but we still produce a
-    clinical recommendation for later analysis.
-    """
-    discussion_history = ""
-    for i in range(rounds):
-        doctor_prompt = (
-            "\nOriginal full dialogue:\n" + full_dialogue
-            + "\n\nYour diagnosis: " + doctor_diagnosis
-            + "\nReviewer's diagnosis: " + reviewer_diagnosis
-            + "\n\nDiscussion so far:\n" + discussion_history
-            + "\n\nRespond to the reviewer. Keep it concise and clinical."
-        )
-        doctor_msg = query_model(
-            doctor_llm,
-            doctor_prompt,
-            "You are the original interviewing doctor discussing a diagnostic disagreement with a senior reviewer. Keep your reply concise, clinical, and evidence-based.",
-            clip_prompt=True,
-        )
-        discussion_history += f"Doctor discussion round {i + 1}: {doctor_msg}\n"
-
-        reviewer_msg = reviewer_agent.inference_reviewer_discussion(
-            full_dialogue=full_dialogue,
-            doctor_diagnosis=doctor_diagnosis,
-            reviewer_diagnosis=reviewer_diagnosis,
-            discussion_history=discussion_history,
-        )
-        discussion_history += f"Reviewer discussion round {i + 1}: {reviewer_msg}\n"
-
-    recommendation_prompt = (
-        "\nOriginal full dialogue:\n" + full_dialogue
-        + "\n\nInitial doctor diagnosis: " + doctor_diagnosis
-        + "\nInitial reviewer diagnosis: " + reviewer_diagnosis
-        + "\n\nTheir 5-round discussion:\n" + discussion_history
-        + "\n\nGive one final clinical recommendation for this scenario. "
-          "Do not claim this scenario should be counted in accuracy."
-    )
-    recommendation = query_model(
-        reviewer_agent.backend,
-        recommendation_prompt,
-        "You are a senior physician reviewer. Provide a concise final recommendation after disagreement discussion.",
-        clip_prompt=True,
-    )
-    return discussion_history, recommendation
-
 def compare_results(diagnosis, correct_diagnosis, moderator_llm, mod_pipe):
     answer = query_model(moderator_llm, "\nHere is the correct diagnosis: " + correct_diagnosis + "\n Here was the doctor dialogue: " + diagnosis + "\nAre these the same?", "You are responsible for determining if the corrent diagnosis and the doctor diagnosis are the same disease. Please respond only with Yes or No. Nothing else.")
     return answer.lower()
+
+
+
+# ============================================================
+# Anchor-case behavioral equivalence utilities
+# ============================================================
+
+def normalize_diagnosis_name(text):
+    """Normalize diagnosis strings for consistency comparison.
+
+    This is intentionally not an accuracy check. It only canonicalizes surface form
+    differences so two versions can be compared more fairly.
+    """
+    if text is None:
+        return ""
+    text = str(text).lower()
+    text = re.sub(r"diagnosis ready\s*:", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"final diagnosis\s*:", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"[^a-z0-9\s\-/]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def extract_final_diagnosis(dialogue_text):
+    """Extract the final diagnosis from a doctor response or dialogue transcript."""
+    if dialogue_text is None:
+        return ""
+    text = str(dialogue_text)
+
+    # Preferred structured format:
+    # DIAGNOSIS READY: pneumonia
+    match = re.search(
+        r"DIAGNOSIS READY\s*:\s*(.*?)(?:\n|CANDIDATES\s*:|KEY EVIDENCE\s*:|$)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        return normalize_diagnosis_name(match.group(1))
+
+    # Fallback: take the last non-empty line.
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return ""
+    return normalize_diagnosis_name(lines[-1])
+
+
+def extract_candidate_diagnoses(dialogue_text):
+    """Extract candidate diagnoses from the structured CANDIDATES line."""
+    if dialogue_text is None:
+        return []
+    text = str(dialogue_text)
+    match = re.search(
+        r"CANDIDATES\s*:\s*(.*?)(?:\n|KEY EVIDENCE\s*:|$)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        final_dx = extract_final_diagnosis(text)
+        return [final_dx] if final_dx else []
+
+    raw = match.group(1)
+    parts = re.split(r";|,|\n|\d+[\).\s]+", raw)
+    candidates = []
+    for part in parts:
+        dx = normalize_diagnosis_name(part)
+        if dx and dx not in candidates:
+            candidates.append(dx)
+    return candidates
+
+
+def extract_key_evidence(dialogue_text):
+    """Extract key evidence items from the structured KEY EVIDENCE line."""
+    if dialogue_text is None:
+        return []
+    text = str(dialogue_text)
+    match = re.search(r"KEY EVIDENCE\s*:\s*(.*)$", text, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return []
+    raw = match.group(1)
+    parts = re.split(r";|\n|\d+[\).\s]+", raw)
+    evidence = []
+    for part in parts:
+        item = normalize_answer(part).lower()
+        if item and item not in evidence:
+            evidence.append(item)
+    return evidence
+
+
+def jaccard_similarity(items_a, items_b):
+    set_a = set([x for x in items_a if x])
+    set_b = set([x for x in items_b if x])
+    if not set_a and not set_b:
+        return 1.0
+    if not set_a or not set_b:
+        return 0.0
+    return len(set_a.intersection(set_b)) / len(set_a.union(set_b))
+
+
+def js_divergence_from_counts(counts_a, counts_b):
+    """Jensen-Shannon divergence using diagnosis-count dictionaries.
+
+    Returns a value in [0, 1] when log base 2 is used.
+    0 means identical empirical output distributions.
+    """
+    import math
+
+    keys = sorted(set(counts_a.keys()).union(set(counts_b.keys())))
+    if not keys:
+        return 0.0
+
+    total_a = sum(counts_a.values())
+    total_b = sum(counts_b.values())
+    if total_a == 0 and total_b == 0:
+        return 0.0
+    if total_a == 0 or total_b == 0:
+        return 1.0
+
+    p = [counts_a.get(k, 0) / total_a for k in keys]
+    q = [counts_b.get(k, 0) / total_b for k in keys]
+    m = [(x + y) / 2 for x, y in zip(p, q)]
+
+    def kl_divergence(x, y):
+        value = 0.0
+        for xi, yi in zip(x, y):
+            if xi > 0:
+                value += xi * math.log(xi / yi, 2)
+        return value
+
+    return 0.5 * kl_divergence(p, m) + 0.5 * kl_divergence(q, m)
+
+
+def update_count(counts, key):
+    key = key if key else "<missing diagnosis>"
+    counts[key] = counts.get(key, 0) + 1
+
+
+def most_common_key(counts):
+    if not counts:
+        return ""
+    return sorted(counts.items(), key=lambda x: (-x[1], x[0]))[0][0]
+
+
+def compare_diagnosis_equivalence(dx_a, dx_b, moderator_llm, use_moderator=True):
+    """Compare two model outputs with no reference to the ground-truth answer."""
+    dx_a = normalize_diagnosis_name(dx_a)
+    dx_b = normalize_diagnosis_name(dx_b)
+    if not dx_a or not dx_b:
+        return False
+    if dx_a == dx_b:
+        return True
+    if not use_moderator:
+        return False
+
+    prompt = (
+        "\nDiagnosis from version A: " + dx_a +
+        "\nDiagnosis from version B: " + dx_b +
+        "\nAre these the same disease or clinically equivalent diagnoses?"
+    )
+    answer = query_model(
+        moderator_llm,
+        prompt,
+        "You determine whether two diagnosis labels refer to the same disease. "
+        "Do not use any ground-truth answer. Respond only with Yes or No.",
+    )
+    return normalize_answer(answer).lower().startswith("yes")
+
+
+def run_agentclinic_case(
+    scenario,
+    dataset,
+    inf_type,
+    doctor_bias,
+    patient_bias,
+    doctor_llm,
+    patient_llm,
+    measurement_llm,
+    total_inferences,
+    img_request,
+    output_format="anchor_compare",
+    verbose=False,
+):
+    """Run one scenario once and return structured behavioral outputs.
+
+    This does not check correctness against the scenario's correct diagnosis.
+    It only records the agent behavior for later version-to-version comparison.
+    """
+    pi_dialogue = str()
+    meas_agent = MeasurementAgent(scenario=scenario, backend_str=measurement_llm)
+    patient_agent = PatientAgent(
+        scenario=scenario,
+        bias_present=patient_bias,
+        backend_str=patient_llm,
+    )
+    doctor_agent = DoctorAgent(
+        scenario=scenario,
+        bias_present=doctor_bias,
+        backend_str=doctor_llm,
+        max_infs=total_inferences,
+        img_request=img_request,
+        output_format=output_format,
+    )
+
+    doctor_dialogue = ""
+    transcript = []
+
+    for _inf_id in range(total_inferences):
+        if dataset in ["NEJM", "NEJM_Ext"] and img_request:
+            imgs = "REQUEST IMAGES" in doctor_dialogue
+        else:
+            imgs = False
+
+        if _inf_id == total_inferences - 1:
+            pi_dialogue += "This is the final question. Please provide a diagnosis in the required structured format.\n"
+
+        if inf_type == "human_doctor":
+            doctor_dialogue = input("\nQuestion for patient: ")
+        else:
+            doctor_dialogue = doctor_agent.inference_doctor(pi_dialogue, image_requested=imgs)
+
+        transcript.append({"role": "doctor", "content": doctor_dialogue})
+        if verbose:
+            print("Doctor [{}%]:".format(int(((_inf_id + 1) / total_inferences) * 100)), doctor_dialogue)
+
+        if "DIAGNOSIS READY" in doctor_dialogue:
+            break
+
+        if "REQUEST TEST" in doctor_dialogue:
+            pi_dialogue = meas_agent.inference_measurement(doctor_dialogue)
+            transcript.append({"role": "measurement", "content": pi_dialogue})
+            patient_agent.add_hist(pi_dialogue)
+            if verbose:
+                print("Measurement [{}%]:".format(int(((_inf_id + 1) / total_inferences) * 100)), pi_dialogue)
+        else:
+            if inf_type == "human_patient":
+                pi_dialogue = input("\nResponse to doctor: ")
+            else:
+                pi_dialogue = patient_agent.inference_patient(doctor_dialogue)
+            transcript.append({"role": "patient", "content": pi_dialogue})
+            meas_agent.add_hist(pi_dialogue)
+            if verbose:
+                print("Patient [{}%]:".format(int(((_inf_id + 1) / total_inferences) * 100)), pi_dialogue)
+
+        time.sleep(1.0)
+
+    final_dx = extract_final_diagnosis(doctor_dialogue)
+    candidates = extract_candidate_diagnoses(doctor_dialogue)
+    evidence = extract_key_evidence(doctor_dialogue)
+
+    # Diagnostic: when extraction failed, dump enough info to distinguish
+    # (a) empty API response, (b) truncation before DIAGNOSIS READY,
+    # (c) truncation right at DIAGNOSIS READY:, (d) parser miss on present diagnosis.
+    if not final_dx:
+        msg = doctor_dialogue or ""
+        marker_present = "DIAGNOSIS READY" in msg.upper()
+        tail = msg[-200:].replace("\n", "\\n")
+        print(
+            "  [empty final_dx] msg_len={} chars | has 'DIAGNOSIS READY'={} | last_200={!r}".format(
+                len(msg), marker_present, tail
+            )
+        )
+
+    return {
+        "final_doctor_message": doctor_dialogue,
+        "final_diagnosis": final_dx,
+        "candidate_diagnoses": candidates,
+        "key_evidence": evidence,
+        "transcript": transcript,
+    }
+
+
+def load_scenario_loader(dataset):
+    if dataset == "MedQA":
+        return ScenarioLoaderMedQA()
+    if dataset == "MedQA_Ext":
+        return ScenarioLoaderMedQAExtended()
+    if dataset == "NEJM":
+        return ScenarioLoaderNEJM()
+    if dataset == "NEJM_Ext":
+        return ScenarioLoaderNEJMExtended()
+    if dataset == "MIMICIV":
+        return ScenarioLoaderMIMICIV()
+    raise Exception("Dataset {} does not exist".format(str(dataset)))
+
+
+def run_anchor_comparison(
+    api_key,
+    replicate_api_key,
+    inf_type,
+    doctor_bias,
+    patient_bias,
+    baseline_doctor_llm,
+    candidate_doctor_llm,
+    patient_llm,
+    measurement_llm,
+    moderator_llm,
+    num_scenarios,
+    dataset,
+    img_request,
+    total_inferences,
+    anthropic_api_key=None,
+    deepseek_api_key=None,
+    runs_per_case=3,
+    agreement_threshold=0.90,
+    jaccard_threshold=0.75,
+    jsd_threshold=0.10,
+    output_json=None,
+    use_moderator_for_equivalence=True,
+    verbose=False,
+):
+    """Compare two doctor-agent versions on fixed anchor cases.
+
+    This mode does NOT compute diagnostic accuracy. It treats the selected
+    scenarios as anchor cases and measures behavioral equivalence between the
+    baseline doctor model and candidate doctor model.
+    """
+    if api_key is not None:
+        os.environ["OPENAI_API_KEY"] = api_key
+    if deepseek_api_key is not None:
+        os.environ["DEEPSEEK_API_KEY"] = deepseek_api_key
+
+    anthropic_llms = ["claude3.5sonnet"]
+    replicate_llms = ["llama-3-70b-instruct", "llama-2-70b-chat", "mixtral-8x7b"]
+    all_llms = [
+        baseline_doctor_llm,
+        candidate_doctor_llm,
+        patient_llm,
+        measurement_llm,
+        moderator_llm,
+    ]
+    if any(llm in replicate_llms for llm in all_llms) and replicate_api_key is not None:
+        os.environ["REPLICATE_API_TOKEN"] = replicate_api_key
+    if any(llm in anthropic_llms for llm in all_llms) and anthropic_api_key is not None:
+        os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
+
+    scenario_loader = load_scenario_loader(dataset)
+    if num_scenarios is None:
+        num_scenarios = scenario_loader.num_scenarios
+    num_scenarios = min(num_scenarios, scenario_loader.num_scenarios)
+
+    case_results = []
+    top1_same_count = 0
+    candidate_jaccards = []
+    evidence_jaccards = []
+    jsds = []
+
+    print("\n==============================")
+    print("Anchor-Case Version Comparison")
+    print("==============================")
+    print(f"Dataset: {dataset}")
+    print(f"Anchor cases: {num_scenarios}")
+    print(f"Runs per case per version: {runs_per_case}")
+    print(f"Baseline doctor: {baseline_doctor_llm}")
+    print(f"Candidate doctor: {candidate_doctor_llm}")
+    print("Metric focus: behavior consistency, not accuracy")
+
+    for scenario_id in range(num_scenarios):
+        scenario = scenario_loader.get_scenario(id=scenario_id)
+
+        baseline_runs = []
+        candidate_runs = []
+        baseline_counts = {}
+        candidate_counts = {}
+
+        print(f"\n--- Anchor case {scenario_id} ---")
+
+        for run_id in range(runs_per_case):
+            baseline_result = run_agentclinic_case(
+                scenario=scenario,
+                dataset=dataset,
+                inf_type=inf_type,
+                doctor_bias=doctor_bias,
+                patient_bias=patient_bias,
+                doctor_llm=baseline_doctor_llm,
+                patient_llm=patient_llm,
+                measurement_llm=measurement_llm,
+                total_inferences=total_inferences,
+                img_request=img_request,
+                output_format="anchor_compare",
+                verbose=verbose,
+            )
+            baseline_runs.append(baseline_result)
+            update_count(baseline_counts, baseline_result["final_diagnosis"])
+            print(f"Baseline run {run_id + 1}: {baseline_result['final_diagnosis']}")
+
+            candidate_result = run_agentclinic_case(
+                scenario=scenario,
+                dataset=dataset,
+                inf_type=inf_type,
+                doctor_bias=doctor_bias,
+                patient_bias=patient_bias,
+                doctor_llm=candidate_doctor_llm,
+                patient_llm=patient_llm,
+                measurement_llm=measurement_llm,
+                total_inferences=total_inferences,
+                img_request=img_request,
+                output_format="anchor_compare",
+                verbose=verbose,
+            )
+            candidate_runs.append(candidate_result)
+            update_count(candidate_counts, candidate_result["final_diagnosis"])
+            print(f"Candidate run {run_id + 1}: {candidate_result['final_diagnosis']}")
+
+        baseline_majority = most_common_key(baseline_counts)
+        candidate_majority = most_common_key(candidate_counts)
+        top1_same = compare_diagnosis_equivalence(
+            baseline_majority,
+            candidate_majority,
+            moderator_llm,
+            use_moderator=use_moderator_for_equivalence,
+        )
+
+        baseline_candidates = []
+        candidate_candidates = []
+        baseline_evidence = []
+        candidate_evidence = []
+
+        for item in baseline_runs:
+            baseline_candidates.extend(item["candidate_diagnoses"])
+            baseline_evidence.extend(item["key_evidence"])
+        for item in candidate_runs:
+            candidate_candidates.extend(item["candidate_diagnoses"])
+            candidate_evidence.extend(item["key_evidence"])
+
+        cand_jaccard = jaccard_similarity(baseline_candidates, candidate_candidates)
+        evid_jaccard = jaccard_similarity(baseline_evidence, candidate_evidence)
+        jsd = js_divergence_from_counts(baseline_counts, candidate_counts)
+
+        top1_same_count += int(top1_same)
+        candidate_jaccards.append(cand_jaccard)
+        evidence_jaccards.append(evid_jaccard)
+        jsds.append(jsd)
+
+        case_summary = {
+            "scenario_id": scenario_id,
+            "baseline_counts": baseline_counts,
+            "candidate_counts": candidate_counts,
+            "baseline_majority_diagnosis": baseline_majority,
+            "candidate_majority_diagnosis": candidate_majority,
+            "top1_equivalent": top1_same,
+            "candidate_jaccard": cand_jaccard,
+            "evidence_jaccard": evid_jaccard,
+            "js_divergence": jsd,
+            "baseline_runs": baseline_runs,
+            "candidate_runs": candidate_runs,
+        }
+        case_results.append(case_summary)
+
+        print(f"Majority baseline:  {baseline_majority}")
+        print(f"Majority candidate: {candidate_majority}")
+        print(f"Top-1 equivalent:  {top1_same}")
+        print(f"Candidate Jaccard: {cand_jaccard:.4f}")
+        print(f"Evidence Jaccard:  {evid_jaccard:.4f}")
+        print(f"JS Divergence:     {jsd:.4f}")
+
+    top1_agreement = top1_same_count / num_scenarios if num_scenarios else 0.0
+    avg_candidate_jaccard = sum(candidate_jaccards) / len(candidate_jaccards) if candidate_jaccards else 0.0
+    avg_evidence_jaccard = sum(evidence_jaccards) / len(evidence_jaccards) if evidence_jaccards else 0.0
+    avg_jsd = sum(jsds) / len(jsds) if jsds else 1.0
+
+    behaviorally_equivalent = (
+        top1_agreement >= agreement_threshold
+        and avg_candidate_jaccard >= jaccard_threshold
+        and avg_jsd <= jsd_threshold
+    )
+
+    summary = {
+        "dataset": dataset,
+        "num_anchor_cases": num_scenarios,
+        "runs_per_case": runs_per_case,
+        "baseline_doctor_llm": baseline_doctor_llm,
+        "candidate_doctor_llm": candidate_doctor_llm,
+        "top1_agreement": top1_agreement,
+        "average_candidate_jaccard": avg_candidate_jaccard,
+        "average_evidence_jaccard": avg_evidence_jaccard,
+        "average_js_divergence": avg_jsd,
+        "thresholds": {
+            "top1_agreement_min": agreement_threshold,
+            "candidate_jaccard_min": jaccard_threshold,
+            "js_divergence_max": jsd_threshold,
+        },
+        "behaviorally_equivalent": behaviorally_equivalent,
+        "case_results": case_results,
+    }
+
+    print("\n==============================")
+    print("Final Behavioral Equivalence Results")
+    print("==============================")
+    print(f"Top-1 diagnosis agreement:       {top1_agreement:.4f}")
+    print(f"Avg candidate Jaccard:           {avg_candidate_jaccard:.4f}")
+    print(f"Avg evidence Jaccard:            {avg_evidence_jaccard:.4f}")
+    print(f"Avg JS divergence:               {avg_jsd:.4f}")
+    print(f"Behaviorally equivalent?:        {behaviorally_equivalent}")
+    print("Note: This is not accuracy. No ground-truth diagnosis is used for the final decision.")
+
+    if output_json:
+        with open(output_json, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+        print(f"\nSaved comparison report to: {output_json}")
+
+    return summary
 
 
 def main(
@@ -762,12 +1133,10 @@ def main(
     patient_llm,
     measurement_llm,
     moderator_llm,
-    reviewer_llm,
     num_scenarios,
     dataset,
     img_request,
     total_inferences,
-    deliberation_rounds,
     anthropic_api_key=None,
     deepseek_api_key=None,
 ):
@@ -778,12 +1147,10 @@ def main(
 
     anthropic_llms = ["claude3.5sonnet"]
     replicate_llms = ["llama-3-70b-instruct", "llama-2-70b-chat", "mixtral-8x7b"]
-
-    all_requested_llms = [patient_llm, doctor_llm, measurement_llm, moderator_llm, reviewer_llm]
-    if any(llm in replicate_llms for llm in all_requested_llms):
+    if patient_llm in replicate_llms or doctor_llm in replicate_llms or measurement_llm in replicate_llms or moderator_llm in replicate_llms:
         if replicate_api_key is not None:
             os.environ["REPLICATE_API_TOKEN"] = replicate_api_key
-    if any(llm in anthropic_llms for llm in all_requested_llms):
+    if doctor_llm in anthropic_llms or patient_llm in anthropic_llms or measurement_llm in anthropic_llms or moderator_llm in anthropic_llms:
         if anthropic_api_key is not None:
             os.environ["ANTHROPIC_API_KEY"] = anthropic_api_key
 
@@ -800,179 +1167,89 @@ def main(
         scenario_loader = ScenarioLoaderMIMICIV()
     else:
         raise Exception("Dataset {} does not exist".format(str(dataset)))
-
-    total_presented = 0
-    total_agreed = 0                 # denominator for final accuracy
     total_correct = 0
-    total_disagreements = 0          # excluded from final accuracy
+    total_presents = 0
 
     # Pipeline for huggingface models
     if "HF_" in moderator_llm:
         pipe = load_huggingface_model(moderator_llm.replace("HF_", ""))
     else:
         pipe = None
-
-    if num_scenarios is None:
-        num_scenarios = scenario_loader.num_scenarios
-
+    if num_scenarios is None: num_scenarios = scenario_loader.num_scenarios
     for _scenario_id in range(0, min(num_scenarios, scenario_loader.num_scenarios)):
-        total_presented += 1
+        total_presents += 1
         pi_dialogue = str()
-
-        # Initialize scenario
-        scenario = scenario_loader.get_scenario(id=_scenario_id)
-
+        # Initialize scenarios (MedQA/NEJM)
+        scenario =  scenario_loader.get_scenario(id=_scenario_id)
         # Initialize agents
         meas_agent = MeasurementAgent(
             scenario=scenario,
             backend_str=measurement_llm)
         patient_agent = PatientAgent(
-            scenario=scenario,
+            scenario=scenario, 
             bias_present=patient_bias,
             backend_str=patient_llm)
         doctor_agent = DoctorAgent(
-            scenario=scenario,
+            scenario=scenario, 
             bias_present=doctor_bias,
             backend_str=doctor_llm,
-            max_infs=total_inferences,
+            max_infs=total_inferences, 
             img_request=img_request)
-        reviewer_agent = ReviewerAgent(
-            scenario=scenario,
-            backend_str=reviewer_llm)
 
         doctor_dialogue = ""
-        full_dialogue = ""
-        doctor_final_response = None
-
         for _inf_id in range(total_inferences):
             # Check for medical image request
             if dataset in ["NEJM", "NEJM_Ext"] and img_request:
                 imgs = "REQUEST IMAGES" in doctor_dialogue
             else:
                 imgs = False
-
             # Check if final inference
             if _inf_id == total_inferences - 1:
-                pi_dialogue += "This is the final question. Please provide a diagnosis using DIAGNOSIS READY: [diagnosis].\n"
-
-            # Obtain doctor dialogue
+                pi_dialogue += "This is the final question. Please provide a diagnosis.\n"
+            # Obtain doctor dialogue (human or llm agent)
             if inf_type == "human_doctor":
                 doctor_dialogue = input("\nQuestion for patient: ")
-            else:
+            else: 
                 doctor_dialogue = doctor_agent.inference_doctor(pi_dialogue, image_requested=imgs)
-
-            print("Doctor [{}%]:".format(int(((_inf_id + 1) / total_inferences) * 100)), doctor_dialogue)
-            full_dialogue += "Doctor: " + doctor_dialogue + "\n"
-
-            # Doctor has arrived at a diagnosis, stop asking patient questions
-            if "DIAGNOSIS READY" in doctor_dialogue.upper():
-                doctor_final_response = doctor_dialogue
+            print("Doctor [{}%]:".format(int(((_inf_id+1)/total_inferences)*100)), doctor_dialogue)
+            # Doctor has arrived at a diagnosis, check correctness
+            if "DIAGNOSIS READY" in doctor_dialogue:
+                moderator_answer = compare_results(doctor_dialogue, scenario.diagnosis_information(), moderator_llm, pipe)
+                correctness = moderator_answer.startswith("yes")
+                if correctness: total_correct += 1
+                print("\nCorrect answer:", scenario.diagnosis_information())
+                print("Scene {}, The diagnosis was ".format(_scenario_id), "CORRECT" if correctness else "INCORRECT", int((total_correct/total_presents)*100))
                 break
-
             # Obtain medical exam from measurement reader
             if "REQUEST TEST" in doctor_dialogue:
-                pi_dialogue = meas_agent.inference_measurement(doctor_dialogue)
-                print("Measurement [{}%]:".format(int(((_inf_id + 1) / total_inferences) * 100)), pi_dialogue)
-                full_dialogue += "Measurement: " + pi_dialogue + "\n"
+                pi_dialogue = meas_agent.inference_measurement(doctor_dialogue,)
+                print("Measurement [{}%]:".format(int(((_inf_id+1)/total_inferences)*100)), pi_dialogue)
                 patient_agent.add_hist(pi_dialogue)
-
             # Obtain response from patient
             else:
                 if inf_type == "human_patient":
                     pi_dialogue = input("\nResponse to doctor: ")
                 else:
                     pi_dialogue = patient_agent.inference_patient(doctor_dialogue)
-                print("Patient [{}%]:".format(int(((_inf_id + 1) / total_inferences) * 100)), pi_dialogue)
-                full_dialogue += "Patient: " + pi_dialogue + "\n"
+                print("Patient [{}%]:".format(int(((_inf_id+1)/total_inferences)*100)), pi_dialogue)
                 meas_agent.add_hist(pi_dialogue)
-
             # Prevent API timeouts
             time.sleep(1.0)
-
-        # If the doctor never used DIAGNOSIS READY, force a final conclusion.
-        if doctor_final_response is None:
-            doctor_final_response = force_doctor_final_diagnosis(
-                doctor_llm=doctor_llm,
-                scenario=scenario,
-                full_dialogue=full_dialogue,
-            )
-            print("Doctor final forced diagnosis:", doctor_final_response)
-            full_dialogue += "Doctor final forced diagnosis: " + doctor_final_response + "\n"
-
-        # Reviewer independently reads the full dialogue and gives a diagnosis.
-        reviewer_final_response = reviewer_agent.inference_reviewer_diagnosis(full_dialogue)
-        print("Reviewer final diagnosis:", reviewer_final_response)
-        full_dialogue += "Reviewer final diagnosis: " + reviewer_final_response + "\n"
-
-        doctor_diagnosis = extract_diagnosis_text(doctor_final_response)
-        reviewer_diagnosis = extract_diagnosis_text(reviewer_final_response)
-
-        # First gate: doctor and reviewer must agree.
-        agreement_answer = compare_results(
-            doctor_diagnosis,
-            reviewer_diagnosis,
-            moderator_llm,
-            pipe,
-        )
-        agreed = agreement_answer.startswith("yes")
-
-        if agreed:
-            total_agreed += 1
-            final_diagnosis = doctor_diagnosis
-
-            moderator_answer = compare_results(
-                final_diagnosis,
-                scenario.diagnosis_information(),
-                moderator_llm,
-                pipe,
-            )
-            correctness = moderator_answer.startswith("yes")
-            if correctness:
-                total_correct += 1
-
-            running_accuracy = total_correct / total_agreed if total_agreed > 0 else 0
-            print("\nCorrect answer:", scenario.diagnosis_information())
-            print(
-                "Scene {}, doctor/reviewer AGREED. The diagnosis was ".format(_scenario_id),
-                "CORRECT" if correctness else "INCORRECT",
-                "Running accuracy among agreed cases: {:.2f}%".format(running_accuracy * 100),
-            )
-
-        else:
-            total_disagreements += 1
-            print("\nScene {} doctor/reviewer DISAGREED. This scenario will be excluded from accuracy.".format(_scenario_id))
-            print("Doctor diagnosis:", doctor_diagnosis)
-            print("Reviewer diagnosis:", reviewer_diagnosis)
-
-            discussion_history, recommendation = discussion_between_doctor_and_reviewer(
-                doctor_llm=doctor_llm,
-                reviewer_agent=reviewer_agent,
-                full_dialogue=full_dialogue,
-                doctor_diagnosis=doctor_diagnosis,
-                reviewer_diagnosis=reviewer_diagnosis,
-                rounds=deliberation_rounds,
-            )
-            print("\nDisagreement discussion:")
-            print(discussion_history)
-            print("Final recommendation for excluded scenario:", recommendation)
-            print("Correct answer, for reference only:", scenario.diagnosis_information())
 
     print("\n==============================")
     print("Final Evaluation Results")
     print("==============================")
     print(f"Dataset: {dataset}")
-    print(f"Total scenarios presented: {total_presented}")
-    print(f"Agreed scenarios counted in accuracy: {total_agreed}")
-    print(f"Disagreement scenarios excluded: {total_disagreements}")
-    print(f"Correct diagnoses among agreed scenarios: {total_correct}")
-    print(f"Incorrect diagnoses among agreed scenarios: {total_agreed - total_correct}")
+    print(f"Total scenarios evaluated: {total_presents}")
+    print(f"Correct diagnoses: {total_correct}")
+    print(f"Incorrect diagnoses: {total_presents - total_correct}")
 
-    if total_agreed > 0:
-        final_accuracy = total_correct / total_agreed
+    if total_presents > 0:
+        final_accuracy = total_correct / total_presents
         print(f"Final Accuracy: {final_accuracy:.4f}")
         print(f"Final Accuracy Percentage: {final_accuracy * 100:.2f}%")
     else:
-        print("Final Accuracy: N/A because no scenario had matching doctor/reviewer conclusions.")
+        print("Final Accuracy: N/A")
 
 
 if __name__ == "__main__":
@@ -990,36 +1267,72 @@ if __name__ == "__main__":
     parser.add_argument("--patient_llm", type=str, default="deepseek-v4-flash")
     parser.add_argument("--measurement_llm", type=str, default="deepseek-v4-flash")
     parser.add_argument("--moderator_llm", type=str, default="deepseek-v4-flash")
-    parser.add_argument("--reviewer_llm", type=str, default="deepseek-v4-pro",
-                        help="LLM used by the second diagnostic reviewer")
 
     parser.add_argument("--agent_dataset", type=str, default="MedQA")  # MedQA, MedQA_Ext, NEJM, NEJM_Ext, MIMICIV
     parser.add_argument("--doctor_image_request", action="store_true", help="Enable image request path. Do not use this with DeepSeek.")
     parser.add_argument("--num_scenarios", type=int, default=None, required=False, help="Number of scenarios to simulate")
     parser.add_argument("--total_inferences", type=int, default=20, required=False, help="Number of inferences between patient and doctor")
-    parser.add_argument("--deliberation_rounds", type=int, default=5, required=False,
-                        help="Number of doctor-reviewer discussion rounds when their diagnoses disagree")
     parser.add_argument("--anthropic_api_key", type=str, default=None, required=False, help="Anthropic API key for Claude 3.5 Sonnet")
+
+    # Version-equivalence / anchor-case comparison mode.
+    # This mode compares two doctor-agent versions and does NOT use diagnostic accuracy.
+    parser.add_argument("--eval_mode", type=str, default="accuracy", choices=["accuracy", "anchor_compare"])
+    parser.add_argument("--baseline_doctor_llm", type=str, default=None, help="Baseline doctor model for anchor_compare mode")
+    parser.add_argument("--candidate_doctor_llm", type=str, default=None, help="Candidate doctor model for anchor_compare mode")
+    parser.add_argument("--runs_per_case", type=int, default=3, help="Repeated runs per anchor case per version")
+    parser.add_argument("--agreement_threshold", type=float, default=0.90, help="Minimum Top-1 diagnosis agreement for equivalence")
+    parser.add_argument("--candidate_jaccard_threshold", type=float, default=0.75, help="Minimum candidate-diagnosis Jaccard similarity for equivalence")
+    parser.add_argument("--jsd_threshold", type=float, default=0.10, help="Maximum Jensen-Shannon divergence for equivalence")
+    parser.add_argument("--output_json", type=str, default=None, help="Optional path to save anchor comparison report as JSON")
+    parser.add_argument("--no_moderator_equivalence", action="store_true", help="Use exact normalized diagnosis match instead of moderator equivalence")
+    parser.add_argument("--verbose_compare", action="store_true", help="Print full turn-by-turn dialogue in anchor_compare mode")
 
     args = parser.parse_args()
 
-    main(
-        args.openai_api_key,
-        args.replicate_api_key,
-        args.inf_type,
-        args.doctor_bias,
-        args.patient_bias,
-        args.doctor_llm,
-        args.patient_llm,
-        args.measurement_llm,
-        args.moderator_llm,
-        args.reviewer_llm,
-        args.num_scenarios,
-        args.agent_dataset,
-        args.doctor_image_request,
-        args.total_inferences,
-        args.deliberation_rounds,
-        args.anthropic_api_key,
-        args.deepseek_api_key,
-    )
-    
+    if args.eval_mode == "anchor_compare":
+        baseline_doctor_llm = args.baseline_doctor_llm or args.doctor_llm
+        candidate_doctor_llm = args.candidate_doctor_llm or args.doctor_llm
+
+        run_anchor_comparison(
+            args.openai_api_key,
+            args.replicate_api_key,
+            args.inf_type,
+            args.doctor_bias,
+            args.patient_bias,
+            baseline_doctor_llm,
+            candidate_doctor_llm,
+            args.patient_llm,
+            args.measurement_llm,
+            args.moderator_llm,
+            args.num_scenarios,
+            args.agent_dataset,
+            args.doctor_image_request,
+            args.total_inferences,
+            args.anthropic_api_key,
+            args.deepseek_api_key,
+            args.runs_per_case,
+            args.agreement_threshold,
+            args.candidate_jaccard_threshold,
+            args.jsd_threshold,
+            args.output_json,
+            not args.no_moderator_equivalence,
+            args.verbose_compare,
+        )
+    else:
+        main(
+            args.openai_api_key,
+            args.replicate_api_key,
+            args.inf_type,
+            args.doctor_bias,
+            args.patient_bias,
+            args.doctor_llm,
+            args.patient_llm,
+            args.measurement_llm,
+            args.moderator_llm,
+            args.num_scenarios,
+            args.agent_dataset,
+            args.doctor_image_request,
+            args.total_inferences,
+            args.anthropic_api_key,
+            args.deepseek_api_key,
+        )

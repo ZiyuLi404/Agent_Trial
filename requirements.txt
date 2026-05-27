@@ -4,3 +4,4 @@ transformers
 replicate
 accelerate
 torch
+python-dotenv
