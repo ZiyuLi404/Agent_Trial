@@ -71,8 +71,13 @@ def run_case(scenario, config):
     return diagnosis or doctor_dialogue, correctness, full_dialogue
 
 
-def stream_cases(dataset, num_cases=None):
-    """Yield (case_id, timestamp, scenario, arm) sequentially in case order."""
+def stream_cases(dataset, num_cases=None, start_id=0):
+    """Yield (case_id, timestamp, scenario, arm) sequentially in case order.
+
+    start_id offsets the global case counter so multi-epoch callers (e.g.
+    deployment_timeline) can produce unique case_ids across epochs without
+    altering scenario loading — the scenario index wraps via modulo.
+    """
     loader_cls = LOADERS.get(dataset)
     if loader_cls is None:
         raise ValueError(f"Unknown dataset: {dataset}. Choose from: {list(LOADERS)}")
@@ -80,8 +85,9 @@ def stream_cases(dataset, num_cases=None):
     loader = loader_cls()
     n = min(num_cases if num_cases is not None else loader.num_scenarios, loader.num_scenarios)
 
-    for case_id in range(n):
-        scenario = loader.get_scenario(id=case_id)
+    for i in range(n):
+        case_id = start_id + i
+        scenario = loader.get_scenario(id=case_id % loader.num_scenarios)
         timestamp = datetime.now(timezone.utc).isoformat()
         arm = assign_arm(case_id)
         yield case_id, timestamp, scenario, arm
