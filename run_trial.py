@@ -17,20 +17,32 @@ CONTROL_MODEL = "deepseek-v4-flash"
 
 def main():
     parser = argparse.ArgumentParser(description="Phase 1 Clinical Trial — AgentClinic wrapper")
+    # Evaluation mode
+    parser.add_argument("--eval_mode", default="accuracy",
+                        choices=["accuracy", "deployment_replay"],
+                        help="'accuracy' = standard RCT; 'deployment_replay' = multi-epoch shadow eval")
     parser.add_argument("--control_llm", default=CONTROL_MODEL,
                         help="Frozen control doctor model (fixed across all epochs)")
     parser.add_argument("--doctor_llm", default="deepseek-v4-pro",
-                        help="Treatment doctor model (changes with each version)")
+                        help="Treatment doctor model (accuracy mode only)")
+    parser.add_argument("--treatment_schedule", default=None,
+                        help="Comma-separated ordered treatment models, one per epoch (deployment_replay only)")
+    parser.add_argument("--epoch_sizes", default=None,
+                        help="Comma-separated new-case counts per epoch, parallel to --treatment_schedule")
     parser.add_argument("--patient_llm", default="deepseek-v4-flash")
     parser.add_argument("--measurement_llm", default="deepseek-v4-flash")
     parser.add_argument("--moderator_llm", default="deepseek-v4-flash")
     parser.add_argument("--dataset", default="MedQA",
                         choices=["MedQA", "MedQA_Ext", "NEJM", "NEJM_Ext"])
     parser.add_argument("--num_cases", type=int, default=None,
-                        help="Number of cases to run (default: all)")
+                        help="Number of cases to run (accuracy mode; default: all)")
     parser.add_argument("--total_inferences", type=int, default=20,
                         help="Max doctor-patient turns per case")
-    # Version management
+    parser.add_argument("--output_dir", default="results/deployment_replay",
+                        help="Root output directory (deployment_replay mode)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed (deployment_replay mode)")
+    # Version management (accuracy mode)
     parser.add_argument("--new_version", action="store_true",
                         help="Open a new trial version epoch before running")
     parser.add_argument("--version_id", default="v1")
@@ -48,6 +60,37 @@ def main():
     if args.deepseek_api_key:
         os.environ["DEEPSEEK_API_KEY"] = args.deepseek_api_key
 
+    # ── deployment_replay mode ────────────────────────────────────────────────
+    if args.eval_mode == "deployment_replay":
+        from deployment_timeline import DeploymentTimeline
+
+        if not args.treatment_schedule:
+            parser.error("--treatment_schedule is required for deployment_replay mode")
+        if not args.epoch_sizes:
+            parser.error("--epoch_sizes is required for deployment_replay mode")
+
+        treatment_schedule = [m.strip() for m in args.treatment_schedule.split(",")]
+        epoch_sizes = [int(x.strip()) for x in args.epoch_sizes.split(",")]
+
+        if len(treatment_schedule) != len(epoch_sizes):
+            parser.error("--treatment_schedule and --epoch_sizes must have the same number of entries")
+
+        timeline = DeploymentTimeline(
+            control_model=args.control_llm,
+            treatment_schedule=treatment_schedule,
+            epoch_sizes=epoch_sizes,
+            dataset=args.dataset,
+            total_inferences=args.total_inferences,
+            output_dir=args.output_dir,
+            seed=args.seed,
+            patient_llm=args.patient_llm,
+            measurement_llm=args.measurement_llm,
+            moderator_llm=args.moderator_llm,
+        )
+        timeline.run()
+        return
+
+    # ── accuracy mode (default) ───────────────────────────────────────────────
     if args.new_version:
         version = open_new_version(
             args.version_id,
