@@ -44,6 +44,11 @@ DEEPSEEK_MODELS = {
     "deepseek-v4-pro",
 }
 
+# 默认采样温度。query_model 在未显式传入 temperature 时使用本值。
+# 实验脚本（如 diagnosis_distribution.py）可在运行时覆盖此模块全局，
+# 而不影响 anchor_compare / run_trial 的默认行为（仍为 0.05）。
+DEFAULT_TEMPERATURE = 0.05
+
 
 def load_huggingface_model(model_name):
     if pipeline is None:
@@ -88,7 +93,9 @@ def query_model(
     scene=None,
     max_prompt_len=2**14,
     clip_prompt=False,
+    temperature=None,
 ):
+    temp = DEFAULT_TEMPERATURE if temperature is None else temperature
     supported_models = list(OPENAI_MODELS.keys()) + list(DEEPSEEK_MODELS) + [
         "claude3.5sonnet",
         "llama-2-70b-chat",
@@ -121,7 +128,7 @@ def query_model(
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": prompt},
                     ],
-                    temperature=0.05,
+                    temperature=temp,
                     max_tokens=200,
                     stream=False,
                 )
@@ -163,7 +170,7 @@ def query_model(
                 response = client.chat.completions.create(
                     model=api_model,
                     messages=messages,
-                    temperature=0.05,
+                    temperature=temp,
                     max_tokens=200,
                 )
                 return normalize_answer(response.choices[0].message.content)

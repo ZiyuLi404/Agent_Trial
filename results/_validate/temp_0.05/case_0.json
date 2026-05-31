@@ -1,0 +1,59 @@
+{
+  "scenario_id": 0,
+  "correct_diagnosis": "Myasthenia gravis",
+  "runs": 3,
+  "bucketing": "semantic",
+  "doctor_llm": "deepseek-v4-pro",
+  "patient_llm": "deepseek-v4-pro",
+  "measurement_llm": "deepseek-v4-pro",
+  "moderator_llm": "deepseek-v4-pro",
+  "temperature": 0.05,
+  "total_inferences": 20,
+  "p_correct": 1.0,
+  "num_distinct_clusters": 1,
+  "entropy_bits": 0.0,
+  "normalized_entropy": 0.0,
+  "mode_diagnosis": "Myasthenia gravis",
+  "mode_prob": 1.0,
+  "distribution": [
+    {
+      "canonical": "Myasthenia gravis",
+      "members": {
+        "Myasthenia gravis": 3
+      },
+      "count": 3,
+      "prob": 1.0,
+      "is_correct": true
+    }
+  ],
+  "samples": [
+    {
+      "run": 0,
+      "diagnosis_text": "Myasthenia gravis",
+      "raw_response": "DIAGNOSIS READY: Myasthenia gravis",
+      "correct": true,
+      "forced": true,
+      "num_infs": 20,
+      "cluster": "Myasthenia gravis"
+    },
+    {
+      "run": 1,
+      "diagnosis_text": "Myasthenia Gravis",
+      "raw_response": "DIAGNOSIS READY: Myasthenia Gravis",
+      "correct": true,
+      "forced": false,
+      "num_infs": 20,
+      "cluster": "Myasthenia gravis"
+    },
+    {
+      "run": 2,
+      "diagnosis_text": "Myasthenia Gravis",
+      "raw_response": "DIAGNOSIS READY: Myasthenia Gravis",
+      "correct": true,
+      "forced": true,
+      "num_infs": 20,
+      "cluster": "Myasthenia gravis"
+    }
+  ],
+  "timestamp": "2026-05-30T12:01:42"
+}
