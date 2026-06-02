@@ -249,7 +249,7 @@ class ScenarioMedQA:
 
 class ScenarioLoaderMedQA:
     def __init__(self) -> None:
-        with open("agentclinic_medqa.jsonl", "r") as f:
+        with open("AgentClinic/agentclinic_medqa.jsonl", "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioMedQA(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -289,7 +289,7 @@ class ScenarioMedQAExtended:
 
 class ScenarioLoaderMedQAExtended:
     def __init__(self) -> None:
-        with open("agentclinic_medqa_extended.jsonl", "r") as f:
+        with open("AgentClinic/agentclinic_medqa_extended.jsonl", "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioMedQAExtended(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -329,7 +329,7 @@ class ScenarioMIMICIVQA:
 
 class ScenarioLoaderMIMICIV:
     def __init__(self) -> None:
-        with open("agentclinic_mimiciv.jsonl", "r") as f:
+        with open("AgentClinic/agentclinic_mimiciv.jsonl", "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioMIMICIVQA(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -369,7 +369,7 @@ class ScenarioNEJMExtended:
 
 class ScenarioLoaderNEJMExtended:
     def __init__(self) -> None:
-        with open("agentclinic_nejm_extended.jsonl", "r") as f:
+        with open("AgentClinic/agentclinic_nejm_extended.jsonl", "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioNEJMExtended(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -409,7 +409,7 @@ class ScenarioNEJM:
 
 class ScenarioLoaderNEJM:
     def __init__(self) -> None:
-        with open("agentclinic_nejm.jsonl", "r") as f:
+        with open("AgentClinic/agentclinic_nejm.jsonl", "r") as f:
             self.scenario_strs = [json.loads(line) for line in f]
         self.scenarios = [ScenarioNEJM(_str) for _str in self.scenario_strs]
         self.num_scenarios = len(self.scenarios)
@@ -609,6 +609,36 @@ class MeasurementAgent:
 def compare_results(diagnosis, correct_diagnosis, moderator_llm, mod_pipe):
     answer = query_model(moderator_llm, "\nHere is the correct diagnosis: " + correct_diagnosis + "\n Here was the doctor dialogue: " + diagnosis + "\nAre these the same?", "You are responsible for determining if the corrent diagnosis and the doctor diagnosis are the same disease. Please respond only with Yes or No. Nothing else.")
     return answer.lower()
+
+
+def extract_diagnosis_text(diagnosis_response):
+    """Convert 'DIAGNOSIS READY: pneumonia' into 'pneumonia'.
+    If the format is absent, return the full response rather than an empty string.
+    """
+    if diagnosis_response is None:
+        return ""
+    text = normalize_answer(diagnosis_response)
+    match = re.search(r"DIAGNOSIS\s+READY\s*:\s*(.*)", text, flags=re.IGNORECASE)
+    if match:
+        return normalize_answer(match.group(1))
+    return text
+
+
+def force_doctor_final_diagnosis(doctor_llm, scenario, full_dialogue):
+    """Force a final diagnosis when the doctor loop ends without DIAGNOSIS READY."""
+    prompt = (
+        "\nHere is the complete dialogue so far:\n"
+        + full_dialogue
+        + "\n\nThe interviewing period is over. Give exactly one final diagnosis now."
+    )
+    system_prompt = (
+        "You are the interviewing doctor. You must now provide your final diagnosis. "
+        "Your answer must use exactly this format: \"DIAGNOSIS READY: [diagnosis here]\". "
+        "Do not ask more questions."
+        "\n\nInitial objective/context for the doctor:\n"
+        + str(scenario.examiner_information())
+    )
+    return query_model(doctor_llm, prompt, system_prompt, clip_prompt=True)
 
 
 def main(
