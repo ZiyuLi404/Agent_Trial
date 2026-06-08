@@ -78,6 +78,12 @@ from AgentClinic.agentclinic import (  # noqa: E402
     force_doctor_final_diagnosis,
     compare_results,
     normalize_answer,
+    load_doctor_prompt_template,
+    load_icd10cm_dictionary,
+    parse_icd10cm_from_diagnosis,
+    validate_icd10cm_output,
+    get_diagnosis_bucket_key,
+    resolve_local_path,
 )
 
 _LOADERS = {
@@ -101,6 +107,10 @@ def run_single_simulation(
     verbose=False,
     label="",
     print_lock=None,
+    doctor_prompt_template=None,
+    diagnosis_output_format="text",
+    icd10cm_dict=None,
+    validate_icd10cm=False,
 ):
     """跑一遍完整的 doctor-patient-measurement 对话，返回 doctor 的最终诊断。
 
@@ -126,6 +136,7 @@ def run_single_simulation(
         bias_present="None",
         backend_str=doctor_llm,
         max_infs=total_inferences,
+        doctor_prompt_template=doctor_prompt_template,
     )
 
     pi_dialogue = ""
@@ -172,13 +183,30 @@ def run_single_simulation(
         vprint(f"Doctor (forced): {doctor_final_response}")
 
     diagnosis_text = extract_diagnosis_text(doctor_final_response)
-    return {
+    result = {
         "diagnosis_text": diagnosis_text,
+        "final_diagnosis": diagnosis_text,
+        "diagnosis_output_format": diagnosis_output_format,
         "raw_response": normalize_answer(doctor_final_response),
         "forced": forced,
         "num_infs": num_infs,
         "full_dialogue": full_dialogue,
     }
+
+    if diagnosis_output_format == "icd10cm":
+        parsed_icd = parse_icd10cm_from_diagnosis(doctor_final_response)
+        if validate_icd10cm and icd10cm_dict is not None:
+            parsed_icd = validate_icd10cm_output(parsed_icd, icd10cm_dict)
+        if not parsed_icd.get("icd10cm_valid", False):
+            vprint(f"Warning: invalid or unrecognized ICD-10-CM output: {doctor_final_response}")
+        result.update(parsed_icd)
+        result["final_diagnosis"] = (
+            parsed_icd.get("icd10cm_dictionary_code")
+            or parsed_icd.get("icd10cm_code")
+            or diagnosis_text
+        )
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +316,10 @@ def run_case_distribution(
     per_call_sleep=0.5,
     verbose=False,
     concurrency=1,
+    doctor_prompt_template=None,
+    diagnosis_output_format="text",
+    icd10cm_dict=None,
+    validate_icd10cm=False,
 ):
     """固定 case 跑 N 次，收集 doctor 最终诊断，按原始字符串得到结果分布。
 
@@ -312,16 +344,29 @@ def run_case_distribution(
             verbose=verbose,
             label=f"[c{scenario_id} r{r}] ",
             print_lock=print_lock,
+            doctor_prompt_template=doctor_prompt_template,
+            diagnosis_output_format=diagnosis_output_format,
+            icd10cm_dict=icd10cm_dict,
+            validate_icd10cm=validate_icd10cm,
         )
         sample = {
             "run": r,
             "diagnosis_text": sim["diagnosis_text"],
+            "final_diagnosis": sim["final_diagnosis"],
+            "diagnosis_output_format": sim["diagnosis_output_format"],
             "raw_response": sim["raw_response"],
             "forced": sim["forced"],
             "num_infs": sim["num_infs"],
             "full_dialogue": sim["full_dialogue"],   # 完整原始对话记录
             "elapsed_sec": round(time.time() - t0, 1),
         }
+        # Carry ICD fields through if present
+        for key in ("icd10cm_code", "icd10cm_code_normalized", "icd10cm_label",
+                    "raw_final_diagnosis", "icd10cm_valid",
+                    "icd10cm_dictionary_code", "icd10cm_dictionary_label"):
+            if key in sim:
+                sample[key] = sim[key]
+
         # 可选：与金标准比对（默认关，关时不调 moderator）
         if grade_correctness:
             sample["correct"] = compare_results(
@@ -333,9 +378,10 @@ def run_case_distribution(
             mark = ""
             if grade_correctness:
                 mark = "✓ " if sample["correct"] else "✗ "
+            display_diag = sim["final_diagnosis"]
             print(f"  run {r + 1:>2}/{runs}  done [{done_counter['n']:>2}/{runs}]  "
                   f"{sample['elapsed_sec']:>5.1f}s  infs={sim['num_infs']:>2} "
-                  f"forced={'Y' if sim['forced'] else 'N'}  | {mark}{sim['diagnosis_text']}",
+                  f"forced={'Y' if sim['forced'] else 'N'}  | {mark}{display_diag}",
                   flush=True)
         return r, sample
 
@@ -349,13 +395,13 @@ def run_case_distribution(
                 r, sample = f.result()
                 samples[r] = sample
 
-    diagnoses = [s["diagnosis_text"] for s in samples]
+    bucket_keys = [get_diagnosis_bucket_key(s) for s in samples]
 
     # ---- 分桶（默认 exact：按原始字符串，不做语义合并、不调 moderator）----
     if bucketing == "exact":
-        clusters, sample_ci = bucket_exact(diagnoses)
+        clusters, sample_ci = bucket_exact(bucket_keys)
     elif bucketing == "semantic":
-        clusters, sample_ci = bucket_semantic(diagnoses, gold, moderator_llm, verbose=verbose)
+        clusters, sample_ci = bucket_semantic(bucket_keys, gold, moderator_llm, verbose=verbose)
     else:
         raise ValueError(f"Unknown bucketing: {bucketing}")
 
@@ -386,6 +432,8 @@ def run_case_distribution(
         "moderator_llm": (moderator_llm if (grade_correctness or bucketing == "semantic") else None),
         "temperature": engine.DEFAULT_TEMPERATURE,
         "total_inferences": total_inferences,
+        "diagnosis_output_format": diagnosis_output_format,
+        "validate_icd10cm": validate_icd10cm,
         "num_distinct_buckets": len(clusters),
         "entropy_bits": ent,
         "normalized_entropy": (ent / max_ent) if max_ent > 0 else 0.0,
@@ -419,6 +467,26 @@ def parse_scenario_ids(spec, num_available):
     return ids
 
 
+def parse_str_list(spec: str) -> list:
+    """Parse a comma-separated list of strings, e.g. 'deepseek-v4-pro, deepseek-v4-flash'."""
+    return [s.strip() for s in spec.split(",") if s.strip()]
+
+
+def parse_prompt_styles(spec: str, prompt_json_path: str) -> list:
+    """Parse comma-separated style names or 'all' (expands to every key in the JSON file)."""
+    spec = spec.strip()
+    if spec == "all":
+        path = resolve_local_path(prompt_json_path)
+        with path.open("r", encoding="utf-8") as f:
+            text = "\n".join(
+                line for line in f
+                if not line.lstrip().startswith("//")
+            )
+        prompt_bank = json.loads(text)
+        return list(prompt_bank.keys())
+    return [s.strip() for s in spec.split(",") if s.strip()]
+
+
 def main():
     # 行缓冲：即使 stdout 重定向到文件，也能逐行落盘，便于实时 tail -f 监控。
     try:
@@ -431,8 +499,9 @@ def main():
     parser.add_argument("--dataset", type=str, default="MedQA", choices=list(_LOADERS.keys()))
     parser.add_argument("--scenario_ids", type=str, default="0",
                         help="case id，如 '0,1,2' / '0-9' / 'all'")
-    parser.add_argument("--runs", type=int, default=30, help="每个 case 重复模拟次数 N")
-    parser.add_argument("--doctor_llm", type=str, default="deepseek-v4-pro")
+    parser.add_argument("--runs", type=int, default=10, help="每个 case 重复模拟次数 N")
+    parser.add_argument("--doctor_llm", type=str, default="deepseek-v4-pro",
+                        help="Doctor LLM(s), comma-separated, e.g. 'deepseek-v4-pro' / 'deepseek-v4-pro, deepseek-v4-flash'")
     parser.add_argument("--patient_llm", type=str, default="deepseek-v4-flash")
     parser.add_argument("--measurement_llm", type=str, default="deepseek-v4-pro")
     parser.add_argument("--moderator_llm", type=str, default="deepseek-v4-pro",
@@ -459,6 +528,17 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="打印每轮对话细节")
     parser.add_argument("--deepseek_api_key", type=str, default=None)
     parser.add_argument("--openai_api_key", type=str, default=None)
+    # Doctor prompt
+    parser.add_argument("--doctor_prompt_json", type=str, default="doctor_prompts.json",
+                        help="Path to JSON file containing doctor prompt templates")
+    parser.add_argument("--doctor_prompt_style", type=str, default="default",
+                        help="Prompt style(s), comma-separated or 'all', e.g. 'default' / 'default, icd10cm' / 'all'")
+    # ICD-10-CM validation
+    parser.add_argument("--icd10cm_jsonl", type=str, default="icd10cm_2026.jsonl",
+                        help="Path to ICD-10-CM JSONL code dictionary. Relative paths resolved relative to agentclinic.py.")
+    parser.add_argument("--validate_icd10cm", action="store_true",
+                        help="Validate ICD-10-CM diagnosis outputs against the JSONL dictionary.")
+    # Convenience aliases for case range / runs / output dir
     args = parser.parse_args()
 
     if args.deepseek_api_key:
@@ -466,107 +546,161 @@ def main():
     if args.openai_api_key:
         os.environ["OPENAI_API_KEY"] = args.openai_api_key
 
+    runs = args.runs
+    out_dir = args.out_dir
+
     temperatures = [float(t) for t in args.temperatures.split(",") if t.strip() != ""]
+    doctor_llms = parse_str_list(args.doctor_llm)
+    prompt_styles = parse_prompt_styles(args.doctor_prompt_style, args.doctor_prompt_json)
+    multi_combo = len(doctor_llms) > 1 or len(prompt_styles) > 1
 
     loader = _LOADERS[args.dataset]()
     scenario_ids = parse_scenario_ids(args.scenario_ids, loader.num_scenarios)
     scenario_ids = [i for i in scenario_ids if 0 <= i < loader.num_scenarios]
 
-    os.makedirs(args.out_dir, exist_ok=True)
+    # Load ICD-10-CM dictionary once (shared across all styles)
+    icd10cm_dict = None
+    if args.validate_icd10cm:
+        icd10cm_dict = load_icd10cm_dictionary(args.icd10cm_jsonl)
+        print(f"Loaded {len(icd10cm_dict)} ICD-10-CM codes from {args.icd10cm_jsonl}")
+
+    os.makedirs(out_dir, exist_ok=True)
     bar = "═" * 70
     print(bar)
     print(f" diagnosis distribution  |  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f" out_dir     : {args.out_dir}")
-    print(f" dataset     : {args.dataset}   cases: {scenario_ids}")
-    print(f" runs/case   : {args.runs}      temperatures: {temperatures}")
-    print(f" bucketing   : {args.bucketing}   grade_correctness: {args.grade_correctness}")
-    print(f" doctor      : {args.doctor_llm}")
-    print(f" patient     : {args.patient_llm}   measurement: {args.measurement_llm}")
+    print(f" out_dir       : {out_dir}")
+    print(f" dataset       : {args.dataset}   cases: {scenario_ids}")
+    print(f" runs/case     : {runs}      temperatures: {temperatures}")
+    print(f" bucketing     : {args.bucketing}   grade_correctness: {args.grade_correctness}")
+    print(f" doctor_llms   : {doctor_llms}")
+    print(f" prompt_styles : {prompt_styles}")
+    print(f" patient       : {args.patient_llm}   measurement: {args.measurement_llm}")
+    if args.validate_icd10cm:
+        print(f" icd10cm       : {args.icd10cm_jsonl} ({len(icd10cm_dict)} codes)")
     if args.bucketing == "semantic" or args.grade_correctness:
-        print(f" moderator   : {args.moderator_llm}  (启用)")
+        print(f" moderator     : {args.moderator_llm}  (启用)")
     else:
-        print(f" moderator   : 未启用（不判对错、不语义合并）")
+        print(f" moderator     : 未启用（不判对错、不语义合并）")
     print(bar)
 
-    summary = []  # 每行 = (temperature, case) 一条记录，便于横向对照
+    summary = []
     for temp in temperatures:
-        # 覆盖引擎默认温度（仅影响本进程，不改 anchor_compare / run_trial 的行为）。
         engine.DEFAULT_TEMPERATURE = temp
-        temp_dir = os.path.join(args.out_dir, f"temp_{temp}")
+        temp_dir = os.path.join(out_dir, f"temp_{temp}")
         os.makedirs(temp_dir, exist_ok=True)
         if len(temperatures) > 1:
             print(f"\n############  temperature = {temp}  ############")
 
-        for sid in scenario_ids:
-            scenario = loader.get_scenario(id=sid)
-            gold = scenario.diagnosis_information()
-            print(f"\n┌─ Case {sid}  (temp={temp}, N={args.runs}) "
-                  f"────────────────────────────────")
-            print(f"│  gold(参考): {gold}")
-            result = run_case_distribution(
-                scenario=scenario,
-                scenario_id=sid,
-                runs=args.runs,
-                doctor_llm=args.doctor_llm,
-                patient_llm=args.patient_llm,
-                measurement_llm=args.measurement_llm,
-                moderator_llm=args.moderator_llm,
-                bucketing=args.bucketing,
-                grade_correctness=args.grade_correctness,
-                total_inferences=args.total_inferences,
-                per_call_sleep=args.per_call_sleep,
-                verbose=args.verbose,
-                concurrency=args.concurrency,
-            )
+        for doctor_llm in doctor_llms:
+            llm_slug = doctor_llm.replace("/", "_").replace(" ", "_")
 
-            # 单 (temp, case) 写盘（增量，崩溃不丢）
-            case_path = os.path.join(temp_dir, f"case_{sid}.json")
-            with open(case_path, "w", encoding="utf-8") as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
+            for prompt_style in prompt_styles:
+                # Load the template for this specific style
+                doctor_prompt_template = None
+                try:
+                    doctor_prompt_template = load_doctor_prompt_template(
+                        args.doctor_prompt_json, prompt_style
+                    )
+                except FileNotFoundError as e:
+                    if prompt_style == "default" and args.doctor_prompt_json == "doctor_prompts.json":
+                        print(f"Warning: {e}. Using built-in default.")
+                    else:
+                        raise
 
-            # 分布表
-            print(f"│")
-            print(f"│  诊断分布 (N={args.runs}, distinct={result['num_distinct_buckets']}, "
-                  f"entropy={result['entropy_bits']:.3f} bits):")
-            for cl in result["distribution"]:
-                grade = ""
-                if args.grade_correctness:
-                    grade = "✓ " if cl.get("is_correct") else "✗ "
-                print(f"│    {cl['prob'] * 100:5.1f}%  ({cl['count']:>2}/{args.runs})  "
-                      f"{grade}{cl['canonical']}")
-            if args.grade_correctness:
-                print(f"│  P(correct) = {result['p_correct']:.3f}")
-            print(f"└─ saved → {case_path}")
+                diagnosis_output_format = "text"
+                if doctor_prompt_template is not None:
+                    diagnosis_output_format = doctor_prompt_template.get(
+                        "diagnosis_output_format", "text"
+                    )
 
-            row = {
-                "temperature": temp,
-                "scenario_id": sid,
-                "correct_diagnosis_reference": result["correct_diagnosis_reference"],
-                "num_distinct_buckets": result["num_distinct_buckets"],
-                "entropy_bits": result["entropy_bits"],
-                "normalized_entropy": result["normalized_entropy"],
-                "mode_diagnosis": result["mode_diagnosis"],
-                "mode_prob": result["mode_prob"],
-            }
-            if args.grade_correctness:
-                row["p_correct"] = result["p_correct"]
-            summary.append(row)
-            with open(os.path.join(args.out_dir, "summary.json"), "w", encoding="utf-8") as f:
-                json.dump({"config": vars(args), "rows": summary}, f, ensure_ascii=False, indent=2)
+                # When running multiple LLM/style combos, place results in subdirs
+                case_dir = (
+                    os.path.join(temp_dir, llm_slug, prompt_style)
+                    if multi_combo
+                    else temp_dir
+                )
+                os.makedirs(case_dir, exist_ok=True)
+
+                if multi_combo:
+                    print(f"\n{'─'*70}")
+                    print(f"  llm={doctor_llm}  style={prompt_style}  format={diagnosis_output_format}")
+                    print(f"{'─'*70}")
+
+                for sid in scenario_ids:
+                    scenario = loader.get_scenario(id=sid)
+                    gold = scenario.diagnosis_information()
+                    print(f"\n┌─ Case {sid}  (temp={temp}, llm={doctor_llm}, style={prompt_style}, N={runs})")
+                    print(f"│  gold(参考): {gold}")
+                    result = run_case_distribution(
+                        scenario=scenario,
+                        scenario_id=sid,
+                        runs=runs,
+                        doctor_llm=doctor_llm,
+                        patient_llm=args.patient_llm,
+                        measurement_llm=args.measurement_llm,
+                        moderator_llm=args.moderator_llm,
+                        bucketing=args.bucketing,
+                        grade_correctness=args.grade_correctness,
+                        total_inferences=args.total_inferences,
+                        per_call_sleep=args.per_call_sleep,
+                        verbose=args.verbose,
+                        concurrency=args.concurrency,
+                        doctor_prompt_template=doctor_prompt_template,
+                        diagnosis_output_format=diagnosis_output_format,
+                        icd10cm_dict=icd10cm_dict,
+                        validate_icd10cm=args.validate_icd10cm,
+                    )
+
+                    case_path = os.path.join(case_dir, f"case_{sid}.json")
+                    with open(case_path, "w", encoding="utf-8") as f:
+                        json.dump(result, f, ensure_ascii=False, indent=2)
+
+                    print(f"│")
+                    print(f"│  诊断分布 (N={runs}, distinct={result['num_distinct_buckets']}, "
+                          f"entropy={result['entropy_bits']:.3f} bits):")
+                    for cl in result["distribution"]:
+                        grade = ""
+                        if args.grade_correctness:
+                            grade = "✓ " if cl.get("is_correct") else "✗ "
+                        print(f"│    {cl['prob'] * 100:5.1f}%  ({cl['count']:>2}/{runs})  "
+                              f"{grade}{cl['canonical']}")
+                    if args.grade_correctness:
+                        print(f"│  P(correct) = {result['p_correct']:.3f}")
+                    print(f"└─ saved → {case_path}")
+
+                    row = {
+                        "temperature": temp,
+                        "doctor_llm": doctor_llm,
+                        "prompt_style": prompt_style,
+                        "diagnosis_output_format": diagnosis_output_format,
+                        "scenario_id": sid,
+                        "correct_diagnosis_reference": result["correct_diagnosis_reference"],
+                        "num_distinct_buckets": result["num_distinct_buckets"],
+                        "entropy_bits": result["entropy_bits"],
+                        "normalized_entropy": result["normalized_entropy"],
+                        "mode_diagnosis": result["mode_diagnosis"],
+                        "mode_prob": result["mode_prob"],
+                    }
+                    if args.grade_correctness:
+                        row["p_correct"] = result["p_correct"]
+                    summary.append(row)
+                    with open(os.path.join(out_dir, "summary.json"), "w", encoding="utf-8") as f:
+                        json.dump({"config": vars(args), "rows": summary}, f, ensure_ascii=False, indent=2)
 
     # ---- 汇总表 ----
     print(f"\n{bar}")
-    print(" 汇总 (distinct / entropy" + ("/ Pcorrect" if args.grade_correctness else "") + ")")
+    print(" 汇总 (distinct / entropy" + (" / Pcorrect" if args.grade_correctness else "") + ")")
     print(bar)
     pcol = "  Pcorr" if args.grade_correctness else ""
-    print(f"{'temp':>6} {'case':>5} {'distinct':>9} {'entropy':>9}{pcol}   mode")
+    print(f"{'temp':>6}  {'llm':<22}  {'style':<18}  {'case':>4}  {'distinct':>8}  {'entropy':>8}{pcol}   mode")
     for row in summary:
         pcell = f"  {row.get('p_correct', 0):>5.2f}" if args.grade_correctness else ""
-        print(f"{row['temperature']:>6} {row['scenario_id']:>5} "
-              f"{row['num_distinct_buckets']:>9} {row['entropy_bits']:>9.3f}{pcell}   "
+        print(f"{row['temperature']:>6}  {row['doctor_llm']:<22}  {row['prompt_style']:<18}  "
+              f"{row['scenario_id']:>4}  {row['num_distinct_buckets']:>8}  "
+              f"{row['entropy_bits']:>8.3f}{pcell}   "
               f"{row['mode_diagnosis']} ({row['mode_prob'] * 100:.0f}%)")
 
-    print(f"\nDone. 每个 (温度,case) 一个 JSON + summary.json 已写入 {args.out_dir}")
+    print(f"\nDone. 每个 (温度, llm, style, case) 一个 JSON + summary.json 已写入 {out_dir}")
 
 
 if __name__ == "__main__":

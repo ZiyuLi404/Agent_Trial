@@ -4,6 +4,7 @@ import re
 import random
 import time
 import json
+from pathlib import Path
 
 try:
     import anthropic
@@ -43,6 +44,127 @@ DEEPSEEK_MODELS = {
 }
 
 
+def resolve_local_path(path_str: str) -> Path:
+    """Resolve a path relative to this file's directory if not absolute."""
+    path = Path(path_str)
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parent / path
+    return path
+
+
+def load_doctor_prompt_template(prompt_json_path: str, prompt_style: str) -> dict:
+    path = resolve_local_path(prompt_json_path)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Doctor prompt JSON file not found: {path}")
+
+    with path.open("r", encoding="utf-8") as f:
+        text = "\n".join(line for line in f if not line.lstrip().startswith("//"))
+    prompt_bank = json.loads(text)
+
+    if prompt_style not in prompt_bank:
+        available = ", ".join(prompt_bank.keys())
+        raise ValueError(
+            f"Unknown doctor prompt style: '{prompt_style}'. "
+            f"Available styles: {available}"
+        )
+
+    return prompt_bank[prompt_style]
+
+
+def normalize_icd10cm_code(code: str) -> str:
+    """Strip dots and uppercase so 'L72.0', 'l72.0', and 'L720' all map to 'L720'."""
+    if not code:
+        return ""
+    return re.sub(r"[^A-Z0-9]", "", code.upper().strip())
+
+
+def load_icd10cm_dictionary(jsonl_path: str) -> dict:
+    """Load ICD-10-CM JSONL into a dict keyed by normalized code.
+
+    Returns: {"L720": {"code": "L720", "description": "Epidermal cyst"}, ...}
+    """
+    path = resolve_local_path(jsonl_path)
+    if not path.exists():
+        raise FileNotFoundError(f"ICD-10-CM JSONL file not found: {path}")
+
+    code_dict = {}
+    with path.open("r", encoding="utf-8") as f:
+        for line_num, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON on line {line_num} of {path}: {e}")
+            code = record.get("code", "").strip()
+            if not code:
+                continue
+            code_dict[normalize_icd10cm_code(code)] = record
+
+    return code_dict
+
+
+def parse_icd10cm_from_diagnosis(raw_output: str) -> dict:
+    """Extract ICD-10-CM code and label from a doctor diagnosis string."""
+    text = (raw_output or "").strip()
+
+    code_match = re.search(
+        r"ICD10CM_CODE:\s*([A-Z][0-9][A-Z0-9](?:\.?[A-Z0-9]{0,4})?)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    label_match = re.search(
+        r"ICD10CM_LABEL:\s*([^;\n\r]+)",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    code = code_match.group(1).upper().strip() if code_match else ""
+    label = label_match.group(1).strip() if label_match else ""
+
+    return {
+        "icd10cm_code": code,
+        "icd10cm_code_normalized": normalize_icd10cm_code(code),
+        "icd10cm_label": label,
+        "raw_final_diagnosis": text,
+    }
+
+
+def validate_icd10cm_output(parsed: dict, icd10cm_dict: dict) -> dict:
+    """Add validation fields to a parsed ICD-10-CM record."""
+    normalized = parsed.get("icd10cm_code_normalized", "")
+    match = icd10cm_dict.get(normalized)
+
+    if match is None:
+        parsed["icd10cm_valid"] = False
+        parsed["icd10cm_dictionary_label"] = ""
+        parsed["icd10cm_dictionary_code"] = ""
+    else:
+        parsed["icd10cm_valid"] = True
+        parsed["icd10cm_dictionary_label"] = (
+            match.get("description")
+            or match.get("long_description")
+            or match.get("short_description")
+            or ""
+        )
+        parsed["icd10cm_dictionary_code"] = match.get("code", "")
+
+    return parsed
+
+
+def get_diagnosis_bucket_key(record: dict) -> str:
+    """Return the canonical string used as the bucket key for a diagnosis record."""
+    if record.get("diagnosis_output_format") == "icd10cm":
+        if record.get("icd10cm_valid") and record.get("icd10cm_dictionary_code"):
+            return record["icd10cm_dictionary_code"]
+        if record.get("icd10cm_code"):
+            return record["icd10cm_code"]
+        return record.get("raw_final_diagnosis", "").strip()
+    return record.get("final_diagnosis", "").strip()
+
+
 def load_huggingface_model(model_name):
     if pipeline is None:
         raise ImportError("transformers is not installed. Run: pip install transformers")
@@ -51,7 +173,7 @@ def load_huggingface_model(model_name):
 
 
 def inference_huggingface(prompt, pipe):
-    response = pipe(prompt, max_new_tokens=100)[0]["generated_text"]
+    response = pipe(prompt, max_new_tokens=1000)[0]["generated_text"]
     response = response.replace(prompt, "")
     return response
 
@@ -120,7 +242,7 @@ def query_model(
                         {"role": "user", "content": prompt},
                     ],
                     temperature=0.05,
-                    max_tokens=200,
+                    max_tokens=2000,
                     stream=False,
                 )
                 return normalize_answer(response.choices[0].message.content)
@@ -162,7 +284,7 @@ def query_model(
                     model=api_model,
                     messages=messages,
                     temperature=0.05,
-                    max_tokens=200,
+                    max_tokens=2000,
                 )
                 return normalize_answer(response.choices[0].message.content)
 
@@ -176,7 +298,7 @@ def query_model(
                 message = client.messages.create(
                     model="claude-3-5-sonnet-20240620",
                     system=system_prompt,
-                    max_tokens=256,
+                    max_tokens=2560,
                     messages=[{"role": "user", "content": prompt}],
                 )
                 answer = json.loads(message.to_json())["content"][0]["text"]
@@ -190,7 +312,7 @@ def query_model(
                     raise ImportError("replicate is not installed. Run: pip install replicate")
                 output = replicate.run(
                     llama2_url,
-                    input={"prompt": prompt, "system_prompt": system_prompt, "max_new_tokens": 200},
+                    input={"prompt": prompt, "system_prompt": system_prompt, "max_new_tokens": 2000},
                 )
                 return normalize_answer("".join(output))
 
@@ -199,7 +321,7 @@ def query_model(
                     raise ImportError("replicate is not installed. Run: pip install replicate")
                 output = replicate.run(
                     mixtral_url,
-                    input={"prompt": prompt, "system_prompt": system_prompt, "max_new_tokens": 75},
+                    input={"prompt": prompt, "system_prompt": system_prompt, "max_new_tokens": 750},
                 )
                 return normalize_answer("".join(output))
 
@@ -208,7 +330,7 @@ def query_model(
                     raise ImportError("replicate is not installed. Run: pip install replicate")
                 output = replicate.run(
                     llama3_url,
-                    input={"prompt": prompt, "system_prompt": system_prompt, "max_new_tokens": 200},
+                    input={"prompt": prompt, "system_prompt": system_prompt, "max_new_tokens": 2000},
                 )
                 return normalize_answer("".join(output))
 
@@ -497,7 +619,7 @@ class PatientAgent:
 
 
 class DoctorAgent:
-    def __init__(self, scenario, backend_str="gpt4", max_infs=20, bias_present=None, img_request=False) -> None:
+    def __init__(self, scenario, backend_str="gpt4", max_infs=20, bias_present=None, img_request=False, doctor_prompt_template=None) -> None:
         # number of inference calls to the doctor
         self.infs = 0
         # maximum number of inference calls to the doctor
@@ -515,6 +637,7 @@ class DoctorAgent:
         self.reset()
         self.pipe = None
         self.img_request = img_request
+        self.doctor_prompt_template = doctor_prompt_template
         self.biases = ["recency", "frequency", "false_consensus", "confirmation", "status_quo", "gender", "race", "sexual_orientation", "cultural", "education", "religion", "socioeconomic"]
 
     def generate_bias(self) -> str:
@@ -565,9 +688,18 @@ class DoctorAgent:
         bias_prompt = ""
         if self.bias_present is not None:
             bias_prompt = self.generate_bias()
-        base = "You are a doctor named Dr. Agent who only responds in the form of dialogue. You are inspecting a patient who you will ask questions in order to understand their disease. You are only allowed to ask {} questions total before you must make a decision. You have asked {} questions so far. You can request test results using the format \"REQUEST TEST: [test]\". For example, \"REQUEST TEST: Chest_X-Ray\". Your dialogue will only be 1-3 sentences in length. Once you have decided to make a diagnosis please type \"DIAGNOSIS READY: [diagnosis here]\"".format(self.MAX_INFS, self.infs) + ("You may also request medical images related to the disease to be returned with \"REQUEST IMAGES\"." if self.img_request else "")
-        presentation = "\n\nBelow is all of the information you have. {}. \n\n Remember, you must discover their disease by asking them questions. You are also able to provide exams.".format(self.presentation)
-        return base + bias_prompt + presentation
+
+        if self.doctor_prompt_template is None:
+            base = "You are a doctor named Dr. Agent who only responds in the form of dialogue. You are inspecting a patient who you will ask questions in order to understand their disease. You are only allowed to ask {} questions total before you must make a decision. You have asked {} questions so far. You can request test results using the format \"REQUEST TEST: [test]\". For example, \"REQUEST TEST: Chest_X-Ray\". Your dialogue will only be 1-3 sentences in length. Once you have decided to make a diagnosis please type \"DIAGNOSIS READY: [diagnosis here]\"".format(self.MAX_INFS, self.infs) + ("You may also request medical images related to the disease to be returned with \"REQUEST IMAGES\"." if self.img_request else "")
+            presentation_section = "\n\nBelow is all of the information you have. {}. \n\n Remember, you must discover their disease by asking them questions. You are also able to provide exams.".format(self.presentation)
+            return base + bias_prompt + presentation_section
+
+        template = self.doctor_prompt_template
+        fmt = dict(max_infs=self.MAX_INFS, infs=self.infs, presentation=self.presentation)
+        base = template["base_prompt"].format(**fmt)
+        image_prompt = template.get("image_prompt", "") if self.img_request else ""
+        presentation_section = template["presentation_prompt"].format(**fmt)
+        return base + image_prompt + bias_prompt + presentation_section
 
     def reset(self) -> None:
         self.agent_hist = ""
@@ -657,11 +789,35 @@ def main(
     total_inferences,
     anthropic_api_key=None,
     deepseek_api_key=None,
+    doctor_prompt_json="doctor_prompts.json",
+    doctor_prompt_style="default",
+    icd10cm_jsonl="icd10cm_2026.jsonl",
+    validate_icd10cm=False,
 ):
     if api_key is not None:
         os.environ["OPENAI_API_KEY"] = api_key
     if deepseek_api_key is not None:
         os.environ["DEEPSEEK_API_KEY"] = deepseek_api_key
+
+    # Load doctor prompt template from JSON (falls back to built-in if default file is absent)
+    doctor_prompt_template = None
+    try:
+        doctor_prompt_template = load_doctor_prompt_template(doctor_prompt_json, doctor_prompt_style)
+        print(f"Using doctor prompt style: '{doctor_prompt_style}' from {doctor_prompt_json}")
+    except FileNotFoundError as e:
+        if doctor_prompt_style == "default" and doctor_prompt_json == "doctor_prompts.json":
+            print(f"Warning: {e}. Falling back to built-in default doctor prompt.")
+        else:
+            raise
+
+    diagnosis_output_format = "text"
+    if doctor_prompt_template is not None:
+        diagnosis_output_format = doctor_prompt_template.get("diagnosis_output_format", "text")
+
+    icd10cm_dict = None
+    if validate_icd10cm:
+        icd10cm_dict = load_icd10cm_dictionary(icd10cm_jsonl)
+        print(f"Loaded {len(icd10cm_dict)} ICD-10-CM codes from {icd10cm_jsonl}")
 
     anthropic_llms = ["claude3.5sonnet"]
     replicate_llms = ["llama-3-70b-instruct", "llama-2-70b-chat", "mixtral-8x7b"]
@@ -708,11 +864,12 @@ def main(
             bias_present=patient_bias,
             backend_str=patient_llm)
         doctor_agent = DoctorAgent(
-            scenario=scenario, 
+            scenario=scenario,
             bias_present=doctor_bias,
             backend_str=doctor_llm,
-            max_infs=total_inferences, 
-            img_request=img_request)
+            max_infs=total_inferences,
+            img_request=img_request,
+            doctor_prompt_template=doctor_prompt_template)
 
         doctor_dialogue = ""
         for _inf_id in range(total_inferences):
@@ -732,6 +889,16 @@ def main(
             print("Doctor [{}%]:".format(int(((_inf_id+1)/total_inferences)*100)), doctor_dialogue)
             # Doctor has arrived at a diagnosis, check correctness
             if "DIAGNOSIS READY" in doctor_dialogue:
+                if diagnosis_output_format == "icd10cm":
+                    parsed_icd = parse_icd10cm_from_diagnosis(doctor_dialogue)
+                    if validate_icd10cm:
+                        parsed_icd = validate_icd10cm_output(parsed_icd, icd10cm_dict)
+                    if not parsed_icd.get("icd10cm_valid", False):
+                        print(f"Warning: invalid or unrecognized ICD-10-CM output: {doctor_dialogue}")
+                    else:
+                        code = parsed_icd.get("icd10cm_dictionary_code") or parsed_icd.get("icd10cm_code", "")
+                        label = parsed_icd.get("icd10cm_dictionary_label") or parsed_icd.get("icd10cm_label", "")
+                        print(f"  ICD-10-CM: {code} — {label}")
                 moderator_answer = compare_results(doctor_dialogue, scenario.diagnosis_information(), moderator_llm, pipe)
                 correctness = moderator_answer.startswith("yes")
                 if correctness: total_correct += 1
@@ -758,6 +925,11 @@ def main(
     print("Final Evaluation Results")
     print("==============================")
     print(f"Dataset: {dataset}")
+    print(f"Doctor prompt style: {doctor_prompt_style}")
+    print(f"Doctor prompt JSON: {doctor_prompt_json}")
+    print(f"Diagnosis output format: {diagnosis_output_format}")
+    if validate_icd10cm and icd10cm_dict is not None:
+        print(f"ICD-10-CM dictionary: {icd10cm_jsonl} ({len(icd10cm_dict)} codes)")
     print(f"Total scenarios evaluated: {total_presents}")
     print(f"Correct diagnoses: {total_correct}")
     print(f"Incorrect diagnoses: {total_presents - total_correct}")
@@ -790,6 +962,10 @@ if __name__ == "__main__":
     parser.add_argument("--num_scenarios", type=int, default=None, required=False, help="Number of scenarios to simulate")
     parser.add_argument("--total_inferences", type=int, default=20, required=False, help="Number of inferences between patient and doctor")
     parser.add_argument("--anthropic_api_key", type=str, default=None, required=False, help="Anthropic API key for Claude 3.5 Sonnet")
+    parser.add_argument("--doctor_prompt_json", type=str, default="doctor_prompts.json", help="Path to JSON file containing doctor prompt templates")
+    parser.add_argument("--doctor_prompt_style", type=str, default="default", help="Key/name of the doctor prompt style inside the JSON file")
+    parser.add_argument("--icd10cm_jsonl", type=str, default="icd10cm_2026.jsonl", help="Path to ICD-10-CM JSONL code dictionary. Relative paths are resolved relative to agentclinic.py.")
+    parser.add_argument("--validate_icd10cm", action="store_true", help="Validate ICD-10-CM diagnosis outputs against the ICD-10-CM JSONL dictionary.")
 
     args = parser.parse_args()
 
@@ -809,4 +985,8 @@ if __name__ == "__main__":
         args.total_inferences,
         args.anthropic_api_key,
         args.deepseek_api_key,
+        args.doctor_prompt_json,
+        args.doctor_prompt_style,
+        args.icd10cm_jsonl,
+        args.validate_icd10cm,
     )

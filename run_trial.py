@@ -118,7 +118,7 @@ def main():
     for case_id, timestamp, scenario, arm in stream_cases(args.dataset, args.num_cases):
         case_config = control_config if arm == "control" else treatment_config
         print(f"\n=== Case {case_id} | arm={arm} | version={version['version_id']} | {timestamp} ===")
-        diagnosis, correctness, consultation = run_case(scenario, case_config)
+        diagnosis, correctness, consultation, _ = run_case(scenario, case_config)
         total += 1
         if correctness:
             correct += 1

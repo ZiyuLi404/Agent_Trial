@@ -34,11 +34,12 @@ def run_oracle_case(dataset, case_id, new_model, shared_config):
 
     Returns
     -------
-    (str, bool, str)
-        diagnosis, correctness, full consultation transcript.
+    (str, bool, str, dict)
+        diagnosis, correctness, full consultation transcript, and meta dict
+        with keys doctor_empty_response and reasoning_content_present.
     """
     loader = LOADERS[dataset]()
     scenario = loader.get_scenario(id=case_id % loader.num_scenarios)
     config = {**shared_config, "doctor_llm": new_model}
-    diagnosis, correctness, consultation = run_case(scenario, config)
-    return diagnosis, correctness, consultation
+    diagnosis, correctness, consultation, meta = run_case(scenario, config)
+    return diagnosis, correctness, consultation, meta

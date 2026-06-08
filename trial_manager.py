@@ -10,6 +10,8 @@ from AgentClinic.agentclinic import (
     PatientAgent,
     DoctorAgent,
     compare_results,
+    EMPTY_SENTINEL,
+    _deepseek_debug,
 )
 from randomization import assign_arm
 
@@ -22,7 +24,12 @@ LOADERS = {
 
 
 def run_case(scenario, config):
-    """Run one AgentClinic case. Returns (diagnosis, correctness, full_dialogue)."""
+    """Run one AgentClinic case.
+
+    Returns (diagnosis, correctness, full_dialogue, meta) where meta contains:
+      raw_doctor_response_empty, doctor_retry_count, doctor_empty_response,
+      backend_error_message, reasoning_content_present, doctor_reasoning_debug.
+    """
     doctor_llm = config["doctor_llm"]
     patient_llm = config["patient_llm"]
     measurement_llm = config["measurement_llm"]
@@ -38,12 +45,53 @@ def run_case(scenario, config):
     full_dialogue = ""
     diagnosis = None
     correctness = False
+    doctor_retry_count = 0
+    doctor_empty_response = False
+    backend_error_message = ""
+    _last_reasoning_present = False
+    _last_reasoning_debug = ""
+
+    def _is_empty(text):
+        return not text or text.strip() == "" or text == EMPTY_SENTINEL
 
     for _inf_id in range(total_inferences):
         if _inf_id == total_inferences - 1:
             pi_dialogue += "This is the final question. Please provide a diagnosis.\n"
 
+        # Snapshot doctor state so we can roll back before a retry.
+        _hist_snap = doctor_agent.agent_hist
+        _infs_snap = doctor_agent.infs
+
         doctor_dialogue = doctor_agent.inference_doctor(pi_dialogue)
+
+        if _is_empty(doctor_dialogue):
+            # Capture reasoning debug from the failed call before rolling back.
+            _last_reasoning_present = _deepseek_debug.get("reasoning_content_present", False)
+            _last_reasoning_debug = _deepseek_debug.get("doctor_reasoning_debug", "")
+            doctor_retry_count += 1
+            print(
+                f"[WARN] Empty doctor output on turn {_inf_id} (model={doctor_llm}) "
+                f"reasoning_present={_last_reasoning_present}, retrying..."
+            )
+            doctor_agent.agent_hist = _hist_snap
+            doctor_agent.infs = _infs_snap
+            doctor_dialogue = doctor_agent.inference_doctor(pi_dialogue)
+            if _is_empty(doctor_dialogue):
+                # Prefer reasoning debug from retry if it adds new info.
+                _retry_r = _deepseek_debug.get("doctor_reasoning_debug", "")
+                if _retry_r and not _last_reasoning_debug:
+                    _last_reasoning_debug = _retry_r
+                    _last_reasoning_present = _deepseek_debug.get("reasoning_content_present", False)
+                doctor_empty_response = True
+                backend_error_message = (
+                    f"Doctor returned empty/sentinel after retry on turn {_inf_id} "
+                    f"(model={doctor_llm})"
+                )
+                print(f"[ERROR] {backend_error_message}. Stopping case.")
+                doctor_agent.agent_hist = _hist_snap
+                doctor_agent.infs = _infs_snap
+                break
+
         full_dialogue += "Doctor: " + doctor_dialogue + "\n"
         print(f"Doctor [{int((_inf_id + 1) / total_inferences * 100)}%]:", doctor_dialogue)
 
@@ -68,7 +116,20 @@ def run_case(scenario, config):
 
         time.sleep(1.0)
 
-    return diagnosis or doctor_dialogue, correctness, full_dialogue
+    if doctor_empty_response:
+        final_diagnosis = EMPTY_SENTINEL
+    else:
+        final_diagnosis = diagnosis or doctor_dialogue
+
+    meta = {
+        "raw_doctor_response_empty": doctor_retry_count > 0,
+        "doctor_retry_count": doctor_retry_count,
+        "doctor_empty_response": doctor_empty_response,
+        "backend_error_message": backend_error_message,
+        "reasoning_content_present": _last_reasoning_present,
+        "doctor_reasoning_debug": _last_reasoning_debug,
+    }
+    return final_diagnosis, correctness, full_dialogue, meta
 
 
 def stream_cases(dataset, num_cases=None, start_id=0):

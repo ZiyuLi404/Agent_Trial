@@ -9,7 +9,7 @@ call patients back.
 Correctness is judged by the same moderator LLM used in all other modes.
 """
 
-from AgentClinic.agentclinic import query_model, normalize_answer, compare_results
+from AgentClinic.agentclinic import query_model, normalize_answer, compare_results, EMPTY_SENTINEL, _deepseek_debug
 
 
 _REPLAY_SYSTEM = (
@@ -38,8 +38,9 @@ def run_replay_case(transcript_text, correct_diagnosis, new_model, moderator_llm
 
     Returns
     -------
-    (str, bool)
-        Raw model output and whether the moderator judged it correct.
+    (str, bool, dict)
+        Raw model output, whether the moderator judged it correct, and a meta
+        dict with keys doctor_empty_response and reasoning_content_present.
     """
     prompt = (
         "Here is a recorded doctor-patient consultation transcript:\n\n"
@@ -49,6 +50,12 @@ def run_replay_case(transcript_text, correct_diagnosis, new_model, moderator_llm
     )
 
     raw_answer = query_model(new_model, prompt, _REPLAY_SYSTEM)
+    # Read _deepseek_debug before compare_results() calls query_model() and overwrites it.
+    _r_present = _deepseek_debug.get("reasoning_content_present", False)
     result = compare_results(raw_answer, str(correct_diagnosis), moderator_llm, None)
     correctness = normalize_answer(result).lower().startswith("yes")
-    return raw_answer, correctness
+    meta = {
+        "doctor_empty_response": raw_answer == EMPTY_SENTINEL or not normalize_answer(raw_answer),
+        "reasoning_content_present": _r_present,
+    }
+    return raw_answer, correctness, meta
