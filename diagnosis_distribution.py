@@ -501,11 +501,19 @@ def main():
                         help="case id，如 '0,1,2' / '0-9' / 'all'")
     parser.add_argument("--runs", type=int, default=10, help="每个 case 重复模拟次数 N")
     parser.add_argument("--doctor_llm", type=str, default="deepseek-v4-pro",
-                        help="Doctor LLM(s), comma-separated, e.g. 'deepseek-v4-pro' / 'deepseek-v4-pro, deepseek-v4-flash'")
-    parser.add_argument("--patient_llm", type=str, default="deepseek-v4-flash")
-    parser.add_argument("--measurement_llm", type=str, default="deepseek-v4-pro")
+                        help="Doctor LLM(s), comma-separated. "
+                             "DeepSeek: deepseek-v4-pro, deepseek-v4-flash, deepseek-chat, deepseek-reasoner. "
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5, o1-preview. "
+                             "Example: 'gpt4o' / 'gpt4o, deepseek-v4-pro'")
+    parser.add_argument("--patient_llm", type=str, default="deepseek-v4-flash",
+                        help="Patient LLM. DeepSeek: deepseek-v4-flash, deepseek-v4-pro. "
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5.")
+    parser.add_argument("--measurement_llm", type=str, default="deepseek-v4-pro",
+                        help="Measurement LLM. DeepSeek: deepseek-v4-pro, deepseek-v4-flash. "
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5.")
     parser.add_argument("--moderator_llm", type=str, default="deepseek-v4-pro",
-                        help="裁判模型，仅在 --bucketing semantic 或 --grade_correctness 时才会被调用")
+                        help="裁判模型，仅在 --bucketing semantic 或 --grade_correctness 时才会被调用。"
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5.")
     parser.add_argument("--bucketing", type=str, default="exact",
                         choices=["exact", "semantic"],
                         help="exact（默认）：按原始字符串分桶，不调 moderator、不做语义合并；"
@@ -526,8 +534,11 @@ def main():
     parser.add_argument("--out_dir", type=str,
                         default=os.path.join("results", "diag_dist_" + datetime.now().strftime("%Y%m%d_%H%M%S")))
     parser.add_argument("--verbose", action="store_true", help="打印每轮对话细节")
-    parser.add_argument("--deepseek_api_key", type=str, default=None)
-    parser.add_argument("--openai_api_key", type=str, default=None)
+    parser.add_argument("--deepseek_api_key", type=str, default=None,
+                        help="DeepSeek API key (or set DEEPSEEK_API_KEY env var)")
+    parser.add_argument("--openai_api_key", type=str, default=None,
+                        help="OpenAI/ChatGPT API key (or set OPENAI_API_KEY env var). "
+                             "Required when using gpt4o, gpt-4o-mini, gpt4, gpt3.5, o1-preview.")
     # Doctor prompt
     parser.add_argument("--doctor_prompt_json", type=str, default="doctor_prompts.json",
                         help="Path to JSON file containing doctor prompt templates")
@@ -575,6 +586,9 @@ def main():
     print(f" doctor_llms   : {doctor_llms}")
     print(f" prompt_styles : {prompt_styles}")
     print(f" patient       : {args.patient_llm}   measurement: {args.measurement_llm}")
+    _openai_key_set = bool(os.environ.get("OPENAI_API_KEY"))
+    _deepseek_key_set = bool(os.environ.get("DEEPSEEK_API_KEY"))
+    print(f" API keys      : OpenAI={'set' if _openai_key_set else 'NOT SET'}   DeepSeek={'set' if _deepseek_key_set else 'NOT SET'}")
     if args.validate_icd10cm:
         print(f" icd10cm       : {args.icd10cm_jsonl} ({len(icd10cm_dict)} codes)")
     if args.bucketing == "semantic" or args.grade_correctness:

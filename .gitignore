@@ -1,5 +1,6 @@
 **/__pycache__/
 *_results*.py
+*_rresult_categorize*.py
 *.out
 
 # Local environment / secrets — never commit
@@ -14,3 +15,5 @@
 anchor_compare_*.json
 trial_log.jsonl
 
+*.json
+results/

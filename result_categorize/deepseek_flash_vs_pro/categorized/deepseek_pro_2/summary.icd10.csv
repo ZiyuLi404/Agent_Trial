@@ -1,0 +1,21 @@
+scenario_id,correct_diagnosis_reference,num_distinct_codes,entropy_bits,normalized_entropy,mode_icd10_code,mode_icd10_label,mode_prob,total_runs
+0,Myasthenia gravis,1,0.0,0.0,G7000,Myasthenia gravis without (acute) exacerbation,1.0,10
+1,Progressive multifocal encephalopathy (PML),2,0.468996,0.468996,A812,Progressive multifocal leukoencephalopathy,0.9,10
+2,Hirschsprung disease,2,0.721928,0.721928,Q431,Hirschsprung's disease,0.8,10
+3,Diffuse large B-cell lymphoma,4,1.846439,0.92322,C8330,"Diffuse large B-cell lymphoma, unspecified site",0.4,10
+4,Acute interstitial nephritis,2,0.970951,0.970951,N140,Analgesic nephropathy,0.6,10
+5,Pes anserine bursitis,6,2.321928,0.898244,M7052,"Other bursitis of knee, left knee",0.4,10
+6,Situational syncope,1,0.0,0.0,R55,Syncope and collapse,1.0,10
+7,Congenital Rubella Infection,1,0.0,0.0,P350,Congenital rubella syndrome,1.0,10
+8,Phyllodes tumor,7,2.646439,0.942681,D4861,Neoplasm of uncertain behavior of right breast,0.3,10
+9,Endometritis,5,1.770951,0.762707,O8681,Puerperal septic thrombophlebitis,0.6,10
+10,Hemorrhoids,3,0.921928,0.581672,K641,Second degree hemorrhoids,0.8,10
+11,Complex partial seizure,3,1.15678,0.729847,G40209,"Localization-related (focal) (partial) symptomatic epilepsy and epileptic syndromes with complex partial seizures, not intractable, without status epilepticus",0.7,10
+12,Posterior hip dislocation,5,1.770951,0.762707,S73014A,"Posterior dislocation of right hip, initial encounter",0.6,10
+13,Hirschsprung’s disease,3,0.921928,0.581672,Q431,Hirschsprung's disease,0.8,10
+14,Rupture of the flexor digitorum profundus tendon at its point of insertion,8,2.921928,0.973976,S66119A,"Strain of flexor muscle, fascia and tendon of unspecified finger at wrist and hand level, initial encounter",0.2,10
+15,Epidermoid cyst,6,2.160964,0.835975,L7211,Pilar cyst,0.5,10
+16,C. difficile colitis,3,1.15678,0.729847,K5289,Other specified noninfective gastroenteritis and colitis,0.7,10
+17,Pyoderma gangrenosum,1,0.0,0.0,L88,Pyoderma gangrenosum,1.0,10
+18,Uterine rupture,2,0.721928,0.721928,O7101,Rupture of uterus before onset of labor,0.8,10
+19,Disc herniation,3,1.15678,0.729847,M5117,"Intervertebral disc disorders with radiculopathy, lumbosacral region",0.7,10
