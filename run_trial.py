@@ -41,8 +41,8 @@ def main():
                         help="Number of cases to run (accuracy mode; default: all)")
     parser.add_argument("--cases", default=None,
                         help="Cases to run in compare mode: range '30-129' or list '1,3,4'")
-    parser.add_argument("--doctor_llms", default=None,
-                        help="Comma-separated doctor models for compare mode, e.g. 'modelA,modelB,modelC,modelD'")
+    parser.add_argument("--doctor_llms", nargs="+", default=None,
+                        help="Doctor models for compare mode, e.g. modelA modelB modelC modelD")
     parser.add_argument("--total_inferences", type=int, default=20,
                         help="Max doctor-patient turns per case")
     parser.add_argument("--output_dir", default="results/deployment_replay",
@@ -104,7 +104,7 @@ def main():
         if not args.doctor_llms:
             parser.error("--doctor_llms is required for compare mode (e.g. 'modelA,modelB')")
 
-        doctor_llms = [m.strip() for m in args.doctor_llms.split(",")]
+        doctor_llms = args.doctor_llms
         shared = {
             "patient_llm": args.patient_llm,
             "measurement_llm": args.measurement_llm,

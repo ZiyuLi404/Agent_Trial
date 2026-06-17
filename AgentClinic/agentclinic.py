@@ -35,6 +35,8 @@ OPENAI_MODELS = {
     "gpt-4o-mini": "gpt-4o-mini",
     "o1-preview": "o1-preview-2024-09-12",
     "gpt-5.4": "gpt-5.4",
+    "gpt-5.4-mini": "gpt-5.4-mini",
+    "gpt-5.4-nano": "gpt-5.4-nano",
     "gpt-5.5": "gpt-5.5",
 }
 
