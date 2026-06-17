@@ -17,3 +17,6 @@ trial_log.jsonl
 
 *.json
 results/
+
+# Python virtual env
+.venv/
