@@ -1,5 +1,7 @@
 import argparse
+import json
 import os
+import re
 
 try:
     from dotenv import load_dotenv
@@ -9,7 +11,7 @@ except ImportError:
           "Run `pip install python-dotenv` or set keys via export/CLI flags.")
 
 from version_manager import get_current_version, open_new_version
-from trial_manager import stream_cases, run_case
+from trial_manager import stream_cases, parse_cases, run_case
 from logger import log_case
 
 CONTROL_MODEL = "deepseek-v4-flash"
@@ -19,8 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description="Phase 1 Clinical Trial — AgentClinic wrapper")
     # Evaluation mode
     parser.add_argument("--eval_mode", default="accuracy",
-                        choices=["accuracy", "deployment_replay"],
-                        help="'accuracy' = standard RCT; 'deployment_replay' = multi-epoch shadow eval")
+                        choices=["accuracy", "deployment_replay", "compare"],
+                        help="'accuracy' = standard RCT; 'deployment_replay' = multi-epoch shadow eval; "
+                             "'compare' = run multiple doctor models on the same cases")
     parser.add_argument("--control_llm", default=CONTROL_MODEL,
                         help="Frozen control doctor model (fixed across all epochs)")
     parser.add_argument("--doctor_llm", default="deepseek-v4-pro",
@@ -36,6 +39,10 @@ def main():
                         choices=["MedQA", "MedQA_Ext", "NEJM", "NEJM_Ext"])
     parser.add_argument("--num_cases", type=int, default=None,
                         help="Number of cases to run (accuracy mode; default: all)")
+    parser.add_argument("--cases", default=None,
+                        help="Cases to run in compare mode: range '30-129' or list '1,3,4'")
+    parser.add_argument("--doctor_llms", default=None,
+                        help="Comma-separated doctor models for compare mode, e.g. 'modelA,modelB,modelC,modelD'")
     parser.add_argument("--total_inferences", type=int, default=20,
                         help="Max doctor-patient turns per case")
     parser.add_argument("--output_dir", default="results/deployment_replay",
@@ -88,6 +95,66 @@ def main():
             moderator_llm=args.moderator_llm,
         )
         timeline.run()
+        return
+
+    # ── compare mode ─────────────────────────────────────────────────────────
+    if args.eval_mode == "compare":
+        if not args.cases:
+            parser.error("--cases is required for compare mode (e.g. '30-129' or '1,3,4')")
+        if not args.doctor_llms:
+            parser.error("--doctor_llms is required for compare mode (e.g. 'modelA,modelB')")
+
+        doctor_llms = [m.strip() for m in args.doctor_llms.split(",")]
+        shared = {
+            "patient_llm": args.patient_llm,
+            "measurement_llm": args.measurement_llm,
+            "moderator_llm": args.moderator_llm,
+            "total_inferences": args.total_inferences,
+        }
+
+        os.makedirs(args.output_dir, exist_ok=True)
+
+        for doctor_llm in doctor_llms:
+            config = {"doctor_llm": doctor_llm, **shared}
+            results = []
+            correct = 0
+
+            print(f"\n{'=' * 50}")
+            print(f"Doctor model: {doctor_llm}")
+            print(f"Cases: {args.cases}  |  Dataset: {args.dataset}")
+            print(f"{'=' * 50}")
+
+            for case_id, timestamp, scenario in parse_cases(args.cases, args.dataset):
+                print(f"\n--- Case {case_id} ---")
+                diagnosis, correctness, dialogue, _ = run_case(scenario, config)
+                correct += 1 if correctness else 0
+                results.append({
+                    "case_id": case_id,
+                    "timestamp": timestamp,
+                    "correct_diagnosis": str(scenario.diagnosis_information()),
+                    "output_diagnosis": str(diagnosis),
+                    "correct": correctness,
+                    "conversation": dialogue,
+                })
+                print(f"  {'CORRECT' if correctness else 'INCORRECT'} | running accuracy: {correct}/{len(results)}")
+
+            safe_name = re.sub(r"[^\w\-]", "_", doctor_llm)
+            out_path = os.path.join(args.output_dir, f"{safe_name}.json")
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "doctor_llm": doctor_llm,
+                    "dataset": args.dataset,
+                    "cases": args.cases,
+                    "patient_llm": args.patient_llm,
+                    "measurement_llm": args.measurement_llm,
+                    "moderator_llm": args.moderator_llm,
+                    "total_cases": len(results),
+                    "correct": correct,
+                    "accuracy": round(correct / len(results), 4) if results else 0,
+                    "results": results,
+                }, f, indent=2, ensure_ascii=False)
+            print(f"\nSaved: {out_path}  ({correct}/{len(results)} correct)")
+
         return
 
     # ── accuracy mode (default) ───────────────────────────────────────────────

@@ -132,6 +132,31 @@ def run_case(scenario, config):
     return final_diagnosis, correctness, full_dialogue, meta
 
 
+def parse_cases(spec, dataset):
+    """Yield (case_id, timestamp, scenario) from a range or list spec.
+
+    spec examples: '30-129'  →  ids 30..129 inclusive
+                   '1,3,4'   →  ids 1, 3, 4
+    """
+    loader_cls = LOADERS.get(dataset)
+    if loader_cls is None:
+        raise ValueError(f"Unknown dataset: {dataset}. Choose from: {list(LOADERS)}")
+    loader = loader_cls()
+
+    if "," in spec:
+        ids = [int(x.strip()) for x in spec.split(",")]
+    elif "-" in spec:
+        start, end = map(int, spec.split("-", 1))
+        ids = list(range(start, end + 1))
+    else:
+        ids = [int(spec.strip())]
+
+    for case_id in ids:
+        scenario = loader.get_scenario(id=case_id % loader.num_scenarios)
+        timestamp = datetime.now(timezone.utc).isoformat()
+        yield case_id, timestamp, scenario
+
+
 def stream_cases(dataset, num_cases=None, start_id=0):
     """Yield (case_id, timestamp, scenario, arm) sequentially in case order.
 
