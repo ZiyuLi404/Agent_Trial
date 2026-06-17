@@ -40,6 +40,17 @@ OPENAI_MODELS = {
     "gpt-5.5": "gpt-5.5",
 }
 
+# GPT-5.x are reasoning models: they reject custom `temperature`, require
+# `max_completion_tokens` instead of `max_tokens`, and accept `reasoning_effort`.
+# Reasoning tokens are billed against the completion budget, so the limit must be
+# generous or the visible answer can come back empty.
+OPENAI_REASONING_MODELS = {
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+    "gpt-5.5",
+}
+
 DEEPSEEK_MODELS = {
     "deepseek-chat",
     "deepseek-reasoner",
@@ -284,12 +295,22 @@ def query_model(
                         {"role": "user", "content": prompt},
                     ]
 
-                response = client.chat.completions.create(
-                    model=api_model,
-                    messages=messages,
-                    temperature=0.05,
-                    max_tokens=2000,
-                )
+                if model_str in OPENAI_REASONING_MODELS:
+                    # No max_completion_tokens => model default (effectively
+                    # unbounded up to context), so reasoning tokens never starve
+                    # the visible answer. temperature is unsupported here.
+                    response = client.chat.completions.create(
+                        model=api_model,
+                        messages=messages,
+                        reasoning_effort="medium",
+                    )
+                else:
+                    response = client.chat.completions.create(
+                        model=api_model,
+                        messages=messages,
+                        temperature=0.05,
+                        max_tokens=2000,
+                    )
                 return normalize_answer(response.choices[0].message.content)
 
             # -------------------------
