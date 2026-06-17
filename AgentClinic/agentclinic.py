@@ -27,6 +27,13 @@ llama2_url = "meta/llama-2-70b-chat"
 llama3_url = "meta/meta-llama-3-70b-instruct"
 mixtral_url = "mistralai/mixtral-8x7b-instruct-v0.1"
 
+EMPTY_SENTINEL = "__EMPTY__"
+
+_deepseek_debug = {
+    "reasoning_content_present": False,
+    "doctor_reasoning_debug": "",
+}
+
 OPENAI_MODELS = {
     "gpt4": "gpt-4-turbo-preview",
     "gpt4v": "gpt-4-vision-preview",
@@ -249,7 +256,11 @@ def query_model(
                     max_tokens=2000,
                     stream=False,
                 )
-                return normalize_answer(response.choices[0].message.content)
+                msg = response.choices[0].message
+                reasoning = getattr(msg, "reasoning_content", None) or ""
+                _deepseek_debug["reasoning_content_present"] = bool(reasoning)
+                _deepseek_debug["doctor_reasoning_debug"] = reasoning
+                return normalize_answer(msg.content)
 
             # -------------------------
             # OpenAI API, new SDK style
