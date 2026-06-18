@@ -1,0 +1,46 @@
+case_id,model,n_outputs,correct_diagnosis_reference,mean_full_dialogue_char_len
+2,flash,20,Hirschsprung disease,6135.8
+2,pro,20,Hirschsprung disease,3968.05
+2,qwen,20,Hirschsprung disease,6324.7
+2,gpt_5_4_mini,20,Hirschsprung disease,3781.6
+2,gpt_5_5,20,Hirschsprung disease,4400.3
+5,flash,20,Pes anserine bursitis,5202.85
+5,pro,20,Pes anserine bursitis,4589.0
+5,qwen,20,Pes anserine bursitis,6563.2
+5,gpt_5_4_mini,20,Pes anserine bursitis,2081.4
+5,gpt_5_5,20,Pes anserine bursitis,1628.2
+15,flash,20,Epidermoid cyst,5716.9
+15,pro,20,Epidermoid cyst,4575.35
+15,qwen,20,Epidermoid cyst,7460.2
+15,gpt_5_4_mini,20,Epidermoid cyst,3268.15
+15,gpt_5_5,20,Epidermoid cyst,2755.15
+18,flash,20,Uterine rupture,2328.1
+18,pro,20,Uterine rupture,2138.75
+18,qwen,20,Uterine rupture,4450.55
+18,gpt_5_4_mini,20,Uterine rupture,1815.7
+18,gpt_5_5,20,Uterine rupture,1550.3
+23,flash,20,Irritable Bowel Syndrome,7219.35
+23,pro,20,Irritable Bowel Syndrome,4618.8
+23,qwen,20,Irritable Bowel Syndrome,7574.6
+23,gpt_5_4_mini,20,Irritable Bowel Syndrome,2764.1
+23,gpt_5_5,20,Irritable Bowel Syndrome,2791.15
+24,flash,20,Meigs syndrome,4859.1
+24,pro,20,Meigs syndrome,3775.95
+24,qwen,20,Meigs syndrome,7407.85
+24,gpt_5_4_mini,20,Meigs syndrome,1884.1
+24,gpt_5_5,20,Meigs syndrome,1777.1
+25,flash,20,Primary sclerosing cholangitis,5936.0
+25,pro,20,Primary sclerosing cholangitis,4855.05
+25,qwen,20,Primary sclerosing cholangitis,7082.25
+25,gpt_5_4_mini,20,Primary sclerosing cholangitis,2752.85
+25,gpt_5_5,20,Primary sclerosing cholangitis,9424.8
+26,flash,20,Interstitial cystitis,6217.25
+26,pro,20,Interstitial cystitis,5759.95
+26,qwen,20,Interstitial cystitis,7557.0
+26,gpt_5_4_mini,20,Interstitial cystitis,3189.15
+26,gpt_5_5,20,Interstitial cystitis,2997.5
+28,flash,20,Lung cancer,6687.1
+28,pro,20,Lung cancer,4418.15
+28,qwen,20,Lung cancer,8081.75
+28,gpt_5_4_mini,20,Lung cancer,4635.75
+28,gpt_5_5,20,Lung cancer,7326.8

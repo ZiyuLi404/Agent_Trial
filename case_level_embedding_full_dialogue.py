@@ -62,7 +62,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-MODEL_ORDER = ["flash", "pro", "qwen"]
+MODEL_ORDER = ["flash", "pro", "qwen", "gpt_5_4_mini", "gpt_5_5"]
 
 
 def clean_text(x):
@@ -81,6 +81,11 @@ def detect_model_from_group(group_name: str):
         return "flash"
     if "pro" in g:
         return "pro"
+    if "gpt" in g:
+        # Collapse repeat-batch suffix into a model family label:
+        #   gpt_5_5_1 / gpt_5_5_2      -> gpt_5_5
+        #   gpt_5_4_mini_1 / ..._2     -> gpt_5_4_mini
+        return re.sub(r"_\d+$", "", g)
     return None
 
 
@@ -173,98 +178,102 @@ def extract_full_dialogue(sample):
     return ""
 
 
-def load_raw_full_dialogues(data_zip, case_ids=None, case_start=None, case_end=None, max_outputs_per_group=10):
+def load_raw_full_dialogues(data_zips, case_ids=None, case_start=None, case_end=None, max_outputs_per_group=10):
+    # Accept either a single zip path or a list of zip paths (e.g. Data.zip + Data_gpt.zip),
+    # so multiple model families can be analyzed together in one run.
+    if isinstance(data_zips, (str, os.PathLike)):
+        data_zips = [data_zips]
+
     rows = []
     group_model_map = {}
 
-    with zipfile.ZipFile(data_zip, "r") as zf:
-        names = zf.namelist()
-        json_files = []
+    for data_zip in data_zips:
+        with zipfile.ZipFile(data_zip, "r") as zf:
+            names = zf.namelist()
+            json_files = []
 
-        for name in names:
-            if "__MACOSX" in name:
-                continue
-            if os.path.basename(name).startswith("._"):
-                continue
-            if not name.endswith(".json"):
-                continue
-
-            case_id = extract_case_id(name)
-            if case_id is None:
-                continue
-
-            parts = name.split("/")
-            if len(parts) < 2:
-                continue
-
-            group = parts[-2]
-            model = detect_model_from_group(group)
-            if model is None:
-                continue
-
-            group_model_map[group] = model
-            json_files.append((name, group, model, case_id))
-
-        if not json_files:
-            raise ValueError(
-                "No valid JSON case files found. Folder names should include pro, flash/falsh, or qwen."
-            )
-
-        for name, group, model, case_id in sorted(json_files):
-            if case_ids is not None and case_id not in case_ids:
-                continue
-            if case_ids is None:
-                if case_start is not None and case_id < case_start:
+            for name in names:
+                if "__MACOSX" in name:
                     continue
-                if case_end is not None and case_id > case_end:
+                if os.path.basename(name).startswith("._"):
+                    continue
+                if not name.endswith(".json"):
                     continue
 
-            case_obj = safe_load_json_from_zip(zf, name)
-            if case_obj is None:
-                continue
-
-            reference = extract_reference(case_obj)
-            samples = get_samples(case_obj)
-            if not isinstance(samples, list):
-                continue
-
-            samples = samples[:max_outputs_per_group]
-
-            for idx, sample in enumerate(samples):
-                full_dialogue = extract_full_dialogue(sample)
-                if not full_dialogue:
+                case_id = extract_case_id(name)
+                if case_id is None:
                     continue
 
-                diagnosis_text = ""
-                if isinstance(sample, dict):
-                    diagnosis_text = clean_text(
-                        sample.get("diagnosis_text")
-                        or sample.get("final_diagnosis")
-                        or sample.get("diagnosis")
-                        or sample.get("answer")
-                        or sample.get("raw_response")
-                        or ""
-                    )
-                    run_id = sample.get("run", idx)
-                else:
-                    run_id = idx
+                parts = name.split("/")
+                if len(parts) < 2:
+                    continue
 
-                rows.append({
-                    "model": model,
-                    "group": group,
-                    "case_id": case_id,
-                    "run_id": run_id,
-                    "run_order": idx + 1,
-                    "source_file": name,
-                    "correct_diagnosis_reference": reference,
-                    "diagnosis_text_for_reference_only": diagnosis_text,
-                    "full_dialogue": full_dialogue,
-                    "full_dialogue_char_len": len(full_dialogue),
-                })
+                group = parts[-2]
+                model = detect_model_from_group(group)
+                if model is None:
+                    continue
+
+                group_model_map[group] = model
+                json_files.append((name, group, model, case_id))
+
+            for name, group, model, case_id in sorted(json_files):
+                if case_ids is not None and case_id not in case_ids:
+                    continue
+                if case_ids is None:
+                    if case_start is not None and case_id < case_start:
+                        continue
+                    if case_end is not None and case_id > case_end:
+                        continue
+
+                case_obj = safe_load_json_from_zip(zf, name)
+                if case_obj is None:
+                    continue
+
+                reference = extract_reference(case_obj)
+                samples = get_samples(case_obj)
+                if not isinstance(samples, list):
+                    continue
+
+                samples = samples[:max_outputs_per_group]
+
+                for idx, sample in enumerate(samples):
+                    full_dialogue = extract_full_dialogue(sample)
+                    if not full_dialogue:
+                        continue
+
+                    diagnosis_text = ""
+                    if isinstance(sample, dict):
+                        diagnosis_text = clean_text(
+                            sample.get("diagnosis_text")
+                            or sample.get("final_diagnosis")
+                            or sample.get("diagnosis")
+                            or sample.get("answer")
+                            or sample.get("raw_response")
+                            or ""
+                        )
+                        run_id = sample.get("run", idx)
+                    else:
+                        run_id = idx
+
+                    rows.append({
+                        "model": model,
+                        "group": group,
+                        "case_id": case_id,
+                        "run_id": run_id,
+                        "run_order": idx + 1,
+                        "source_file": name,
+                        "correct_diagnosis_reference": reference,
+                        "diagnosis_text_for_reference_only": diagnosis_text,
+                        "full_dialogue": full_dialogue,
+                        "full_dialogue_char_len": len(full_dialogue),
+                    })
 
     df = pd.DataFrame(rows)
     if df.empty:
-        raise ValueError("No full_dialogue texts extracted from Data.zip.")
+        raise ValueError(
+            "No full_dialogue texts extracted. Folder names should include "
+            "pro, flash/falsh, qwen, or gpt."
+        )
 
     print("Detected group -> model mapping:")
     for g, m in sorted(group_model_map.items()):
@@ -353,7 +362,7 @@ def export_low_similarity(case_df, pair_cols, output_path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_zip", type=str, required=True, help="Path to Data.zip")
+    parser.add_argument("--data_zip", type=str, nargs="+", required=True, help="Path(s) to one or more data zips, e.g. --data_zip Data.zip Data_gpt.zip")
     parser.add_argument("--model", type=str, default="Qwen/Qwen3-Embedding-0.6B", help="SentenceTransformer model name or local path")
     parser.add_argument("--case_ids", type=int, nargs="*", default=None, help="Optional explicit case ids, e.g. --case_ids 2 5 15 18 23 24 25 26 28")
     parser.add_argument("--case_start", type=int, default=None)
@@ -368,7 +377,7 @@ def main():
 
     print("[1/6] Loading full_dialogue outputs...")
     raw_df = load_raw_full_dialogues(
-        data_zip=args.data_zip,
+        data_zips=args.data_zip,
         case_ids=set(args.case_ids) if args.case_ids else None,
         case_start=args.case_start,
         case_end=args.case_end,
@@ -468,7 +477,11 @@ def main():
     export_low_similarity(group_case_df, group_pair_cols, output_dir / "low_similarity_group_cases_by_pair.csv")
 
     print("[5/6] Computing merged model-level embeddings by case...")
-    available_models = [m for m in MODEL_ORDER if m in set(raw_df["model"])]
+    detected_models = set(raw_df["model"])
+    # Use MODEL_ORDER as the preferred ordering, then append any other detected
+    # model families (e.g. newly added gpt variants) so nothing is silently dropped.
+    available_models = [m for m in MODEL_ORDER if m in detected_models]
+    available_models += sorted(m for m in detected_models if m not in MODEL_ORDER)
     model_pairs = list(itertools.combinations(available_models, 2))
 
     model_emb_store = {}
