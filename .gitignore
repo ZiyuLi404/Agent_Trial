@@ -12,6 +12,7 @@
 .DS_Store
 
 # Experiment outputs — keep these local, don't bloat the repo
+*.csv
 anchor_compare_*.json
 trial_log.jsonl
 

@@ -118,10 +118,13 @@ def main():
             config = {"doctor_llm": doctor_llm, **shared}
             results = []
             correct = 0
+            safe_name = re.sub(r"[^\w\-]", "_", doctor_llm)
+            out_path = os.path.join(args.output_dir, f"{safe_name}.json")
 
             print(f"\n{'=' * 50}")
             print(f"Doctor model: {doctor_llm}")
             print(f"Cases: {args.cases}  |  Dataset: {args.dataset}")
+            print(f"Output: {out_path}")
             print(f"{'=' * 50}")
 
             for case_id, timestamp, scenario in parse_cases(args.cases, args.dataset):
@@ -138,22 +141,21 @@ def main():
                 })
                 print(f"  {'CORRECT' if correctness else 'INCORRECT'} | running accuracy: {correct}/{len(results)}")
 
-            safe_name = re.sub(r"[^\w\-]", "_", doctor_llm)
-            out_path = os.path.join(args.output_dir, f"{safe_name}.json")
-            with open(out_path, "w", encoding="utf-8") as f:
-                json.dump({
-                    "doctor_llm": doctor_llm,
-                    "dataset": args.dataset,
-                    "cases": args.cases,
-                    "patient_llm": args.patient_llm,
-                    "measurement_llm": args.measurement_llm,
-                    "moderator_llm": args.moderator_llm,
-                    "total_cases": len(results),
-                    "correct": correct,
-                    "accuracy": round(correct / len(results), 4) if results else 0,
-                    "results": results,
-                }, f, indent=2, ensure_ascii=False)
-            print(f"\nSaved: {out_path}  ({correct}/{len(results)} correct)")
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "doctor_llm": doctor_llm,
+                        "dataset": args.dataset,
+                        "cases": args.cases,
+                        "patient_llm": args.patient_llm,
+                        "measurement_llm": args.measurement_llm,
+                        "moderator_llm": args.moderator_llm,
+                        "total_cases": len(results),
+                        "correct": correct,
+                        "accuracy": round(correct / len(results), 4) if results else 0,
+                        "results": results,
+                    }, f, indent=2, ensure_ascii=False)
+
+            print(f"\nDone: {out_path}  ({correct}/{len(results)} correct)")
 
         return
 
