@@ -217,34 +217,18 @@ original focus) now lives in [`trial/`](trial/README.md):
 
 ---
 
-## Next Step
-- **Historical borrowing**
-  - Conservative borrowing from prior epochs
-  - Time-discounted or similarity-weighted reuse of historical controls
-  - Historical data used only as supportive evidence, not primary inference
+## Roadmap
 
-- **Drift detection**
-  - Detect changes in:
-    - case mix
-    - model behavior
-    - tool usage
-    - diagnostic distribution
-  - Automatically trigger new epochs when major shifts occur
+The original roadmap, mapped to what now exists. Done items have become their own modules.
 
-- **Parallel / concurrent execution**
-  - Run multiple cases simultaneously
-  - Preserve version snapshots during execution
-  - Add thread-safe logging and version management
+### ✅ Done
+- **Historical borrowing** — [`history_borrowing/`](history_borrowing/README.md) borrows accuracy across *similar models*; [`deployment_replay/`](deployment_replay/README.md) borrows a version's *own past cases* via transcript replay.
+- **Drift detection (diagnostic distribution / model behavior)** — [`embedding_similarity/`](embedding_similarity/README.md) (Method B, vectors), [`kl_js_divergence/`](kl_js_divergence/README.md) (Method A, ICD distributions), and [`anchor_compare/`](anchor_compare/README.md) (behavioral drift on fixed anchors).
 
-- **Expanded outcomes**
-  - Patient confidence
-  - Compliance
-  - Consultation willingness
-  - Safety / bias metrics
-  - Tool-use statistics
+### 🟡 In progress / partial
+- **Parallel / concurrent execution** — `generate_diagnosis_distribution` has `--concurrency`; the online trial loop itself is still sequential (no thread-safe logging / version management yet).
+- **Improved analysis layer** — similarity / divergence / borrowing are covered by G·H·I; per-version treatment-effect estimation, sensitivity analysis, and epoch-comparison reports are not built. Plotting utilities live in `figures_and_reports/` (archived).
 
-- **Improved analysis layer**
-  - Per-version treatment effect estimation
-  - Sensitivity analysis
-  - Epoch comparison reports
-  - Visualization utilities
+### ❌ To do
+- **Auto-trigger epochs on drift** — detect case-mix / tool-usage shifts and open a new version automatically (the removed `version_detect.py` was an early attempt).
+- **Expanded outcomes** — patient confidence, compliance, consultation willingness, safety / bias metrics, tool-use statistics (today `confidence` / `compliance` are logged as `null`).
