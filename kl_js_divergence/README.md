@@ -25,7 +25,7 @@ Offline analysis — no consultations, no engine (it has its own LLM client). A 
 # from the repo root
 python kl_js_divergence/icd_categorize_compare.py \
     --mode both --folders 50case_10runs_flash \
-    --cases 0-19 --runs 0-9 --temperature temp_0.05 --run_name analysis_v1
+    --cases 0-39 --runs 0-9 --temperature temp_0.05 --run_name analysis_v1
 ```
 
 ## Dependencies
