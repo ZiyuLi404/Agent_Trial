@@ -1,0 +1,440 @@
+### Group: diag_dist_flash_0-39 (40 cases) ###
+
+===== case_0 | correct: Myasthenia gravis =====
+Diagnosis distribution (N=10, distinct=3, entropy=0.922 bits):
+│     80.0%  ( 8/10)  Myasthenia Gravis
+│     10.0%  ( 1/10)  Myasthenia Gravis (generalized, acetylcholine receptor antibody-positive)
+│     10.0%  ( 1/10)  Myasthenia Gravis (generalized)
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_0.json
+
+===== case_1 | correct: Progressive multifocal encephalopathy (PML) =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.522 bits):
+│     40.0%  ( 4/10)  Progressive Multifocal Leukoencephalopathy (PML)
+│     10.0%  ( 1/10)  Post-infectious cerebellar ataxia
+│     10.0%  ( 1/10)  Progressive Multifocal Encephalopathy (PML)
+│     10.0%  ( 1/10)  Progressive Multifocal Leukoencephalopathy (PML) secondary to natalizumab therapy.
+│     10.0%  ( 1/10)  Progressive Multifocal Encephalopathy (PML) secondary to natalizumab therapy.
+│     10.0%  ( 1/10)  Progressive Multifocal Leukoencephalopathy (PML) secondary to natalizumab therapy
+│     10.0%  ( 1/10)  Progressive Multifocal Leukoencephalopathy (PML) related to natalizumab therapy.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_1.json
+
+===== case_2 | correct: Hirschsprung disease =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Intussusception
+│     10.0%  ( 1/10)  Intermittent internal hernia.
+│     10.0%  ( 1/10)  Hirschsprung disease (congenital aganglionic megacolon)
+│     10.0%  ( 1/10)  Hirschsprung disease
+│     10.0%  ( 1/10)  Gastroesophageal reflux disease (GERD) with aerophagia.**
+│     10.0%  ( 1/10)  Hirschsprung's disease (likely with enterocolitis)
+│     10.0%  ( 1/10)  Cow's milk protein allergy (CMPA)
+│     10.0%  ( 1/10)  Infantile Colic
+│     10.0%  ( 1/10)  Cow's milk protein allergy (non-IgE mediated)
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_2.json
+
+===== case_3 | correct: Diffuse large B-cell lymphoma =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Diffuse Large B-Cell Lymphoma (Non-Hodgkin Lymphoma)
+│     10.0%  ( 1/10)  Diffuse large B-cell lymphoma (DLBCL)
+│     10.0%  ( 1/10)  Hodgkin Lymphoma
+│     10.0%  ( 1/10)  Hodgkin lymphoma (likely, pending biopsy confirmation)
+│     10.0%  ( 1/10)  Non-Hodgkin lymphoma (B-cell type, consistent with diffuse large B-cell lymphoma given the high proliferative index). I recommend immediate referral to oncology for staging and treatment.
+│     10.0%  ( 1/10)  Diffuse Large B-Cell Lymphoma
+│     10.0%  ( 1/10)  Hodgkin's Lymphoma
+│     10.0%  ( 1/10)  Lymphoma (likely non-Hodgkin, pending biopsy confirmation).
+│     10.0%  ( 1/10)  Hodgkin Lymphoma.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_3.json
+
+===== case_4 | correct: Acute interstitial nephritis =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.646 bits):
+│     30.0%  ( 3/10)  Drug-induced acute interstitial nephritis (likely due to amoxicillin or cephalexin).
+│     20.0%  ( 2/10)  Acute Interstitial Nephritis (drug-induced)
+│     10.0%  ( 1/10)  Acute Interstitial Nephritis
+│     10.0%  ( 1/10)  Acute interstitial nephritis due to drug hypersensitivity (likely amoxicillin).
+│     10.0%  ( 1/10)  Acute interstitial neph
+│     10.0%  ( 1/10)  Acute Interstitial Nephritis (likely drug-induced from amoxicillin)
+│     10.0%  ( 1/10)  Drug-induced acute interstitial nephritis secondary to amoxicillin.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_4.json
+
+===== case_5 | correct: Pes anserine bursitis =====
+Diagnosis distribution (N=10, distinct=6, entropy=2.161 bits):
+│     50.0%  ( 5/10)  Pes Anserine Bursitis
+│     10.0%  ( 1/10)  Pes Anserinus Bursitis / Tendinopathy
+│     10.0%  ( 1/10)  Medial patellar tendinopathy (jumper's knee).
+│     10.0%  ( 1/10)  Pes Anserine Tendinopathy**
+│     10.0%  ( 1/10)  Pes Anserine Bursitis/Tendinopathy
+│     10.0%  ( 1/10)  Recurrent Osgood-Schlatter disease (tibial tuberosity apophysitis) in an adult.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_5.json
+
+===== case_6 | correct: Situational syncope =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.922 bits):
+│     20.0%  ( 2/10)  Micturition Syncope (Reflex Syncope)
+│     20.0%  ( 2/10)  Micturition syncope (vasovagal syncope)
+│     10.0%  ( 1/10)  Micturition Syncope (Situational Syncope)
+│     10.0%  ( 1/10)  Micturition syncope (a form of vasovagal syncope)**
+│     10.0%  ( 1/10)  Micturition syncope
+│     10.0%  ( 1/10)  Micturition syncope (vasovagal syncope triggered by urination)
+│     10.0%  ( 1/10)  Micturition syncope.
+│     10.0%  ( 1/10)  Micturition Syncope**
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_6.json
+
+===== case_7 | correct: Congenital Rubella Infection =====
+Diagnosis distribution (N=10, distinct=1, entropy=0.000 bits):
+│    100.0%  (10/10)  Congenital rubella syndrome
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_7.json
+
+===== case_8 | correct: Phyllodes tumor =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  Phyllodes tumor of the left breast. Further classification (benign, borderline, or malignant) may require additional histological assessment, but this is consistent with the presentation.
+│     10.0%  ( 1/10)  Phyllodes tumor (likely benign, but requires excision for confirmation)
+│     10.0%  ( 1/10)  Phyllodes tumor (likely benign, pending biopsy confirmation)
+│     10.0%  ( 1/10)  Phyllodes tumor of the left breast
+│     10.0%  ( 1/10)  Phyllodes tumor (suspected borderline or malignant based on clinical features, but tissue diagnosis confirms phyllodes tumor).
+│     10.0%  ( 1/10)  Phyllodes tumor of the left breast.
+│     10.0%  ( 1/10)  Phyllodes tumor (left breast)
+│     10.0%  ( 1/10)  Phyllodes tumor
+│     10.0%  ( 1/10)  Phyllodes Tumor (benign)
+│     10.0%  ( 1/10)  Phyllodes tumor (likely benign, but needs histopathologic confirmation).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_8.json
+
+===== case_9 | correct: Endometritis =====
+Diagnosis distribution (N=10, distinct=4, entropy=1.357 bits):
+│     70.0%  ( 7/10)  Postpartum endometritis
+│     10.0%  ( 1/10)  Postpartum endometritis with possible atelectasis. I will start antibiotics for endometritis and monitor your breathing.
+│     10.0%  ( 1/10)  Postpartum Endometritis with Perineal Wound Infection
+│     10.0%  ( 1/10)  Postpartum endometritis with possible early sepsis, complicated by worsening dyspnea of unclear etiology. Recommend immediate IV antibiotics, repeat chest imaging, and consideration of CT pulmonary angiogram.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_9.json
+
+===== case_10 | correct: Hemorrhoids =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.922 bits):
+│     20.0%  ( 2/10)  Internal hemorrhoids (prolapsed, reducible).
+│     20.0%  ( 2/10)  Internal Hemorrhoids
+│     10.0%  ( 1/10)  Anterior rectocele (likely contributing to bright red bleeding from associated internal hemorrhoids).
+│     10.0%  ( 1/10)  Prolapsed internal hemorrhoids.
+│     10.0%  ( 1/10)  Internal hemorrhoids with possible thrombosed external hemorrhoid or hypertrophied anal papilla.
+│     10.0%  ( 1/10)  Internal hemorrhoids (likely grade I-II)
+│     10.0%  ( 1/10)  Internal hemorrhoids with minimal bleeding.
+│     10.0%  ( 1/10)  Suspected rectal adenocarcinoma (rectal cancer) given firm fixed mass, bright red bleeding, age 45, no other risk factors.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_10.json
+
+===== case_11 | correct: Complex partial seizure =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.522 bits):
+│     40.0%  ( 4/10)  Temporal lobe epilepsy (focal impaired awareness seizures)
+│     10.0%  ( 1/10)  Temporal lobe epilepsy (complex partial seizures)
+│     10.0%  ( 1/10)  Focal impaired awareness seizures (temporal lobe epilepsy), likely arising from the right temporal lobe.
+│     10.0%  ( 1/10)  Focal impaired awareness seizures (complex partial seizures) due to right temporal lobe epilepsy.
+│     10.0%  ( 1/10)  Focal epilepsy with impaired awareness (complex partial seizures), likely temporal lobe origin.
+│     10.0%  ( 1/10)  Focal impaired awareness seizures (temporal lobe epilepsy)
+│     10.0%  ( 1/10)  Focal impaired awareness seizures (temporal lobe epilepsy).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_11.json
+
+===== case_12 | correct: Posterior hip dislocation =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.846 bits):
+│     30.0%  ( 3/10)  Posterior dislocation of the right hip.
+│     10.0%  ( 1/10)  Traumatic posterior dislocation of the right hip.
+│     10.0%  ( 1/10)  Posterior dislocation of the right hip with possible mild sciatic nerve irritation (no complete nerve injury based on preserved sensation and pulses).
+│     10.0%  ( 1/10)  Posterior Hip Dislocation (right)
+│     10.0%  ( 1/10)  Posterior dislocation of the right hip without associated fracture.
+│     10.0%  ( 1/10)  Posterior hip dislocation with suspected labral tear or intra-articular fragment.
+│     10.0%  ( 1/10)  Posterior Dislocation of the Right Hip
+│     10.0%  ( 1/10)  Right posterior hip dislocation.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_12.json
+
+===== case_13 | correct: Hirschsprung’s disease =====
+Diagnosis distribution (N=10, distinct=4, entropy=1.571 bits):
+│     60.0%  ( 6/10)  Hirschsprung disease
+│     20.0%  ( 2/10)  Hirschsprung's disease
+│     10.0%  ( 1/10)  Hirschsprung's disease (congenital aganglionic megacolon)
+│     10.0%  ( 1/10)  Hirschsprung's disease (likely short-segment type)
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_13.json
+
+===== case_14 | correct: Rupture of the flexor digitorum profundus tendon at its point of insertion =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Jersey finger (flexor digitorum profundus tendon avulsion) of the right ring finger.
+│     10.0%  ( 1/10)  Flexor digitorum profundus (FDP) tendon avulsion (Jersey finger) of the right ring finger.
+│     10.0%  ( 1/10)  Mallet finger (extensor tendon rupture at the distal interphalangeal joint) of the right ring finger.
+│     10.0%  ( 1/10)  Jersey finger (flexor digitorum profundus avulsion of the right ring finger)
+│     10.0%  ( 1/10)  Jersey finger (FDP tendon avulsion, right ring finger)."
+│     10.0%  ( 1/10)  Jersey finger (avulsion of flexor digitorum profundus tendon, right ring finger, Type II).
+│     10.0%  ( 1/10)  Jersey finger (flexor digitorum profundus avulsion) of the right ring finger, likely Type I or II.
+│     10.0%  ( 1/10)  ** Flexor digitorum profundus avulsion (jersey finger) – likely a type I or II depending on retraction level. I recommend an urgent orthopedic referral for surgical repair.
+│     10.0%  ( 1/10)  Jersey finger (FDP tendon rupture) of the right ring finger.**
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_14.json
+
+===== case_15 | correct: Epidermoid cyst =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  Epidermoid inclusion cyst (sebaceous cyst) of the posterior neck.
+│     10.0%  ( 1/10)  Benign pilar cyst (trichilemmal cyst) of the neck.
+│     10.0%  ( 1/10)  Benign cutaneous cyst (likely epidermal inclusion cyst or pilar cyst) of the nape of the neck.
+│     10.0%  ( 1/10)  Metastatic lymph node from colon adenocarcinoma.
+│     10.0%  ( 1/10)  Benign epidermal inclusion cyst (sebaceous cyst)
+│     10.0%  ( 1/10)  Pilar cyst (trichilemmal cyst) of the nape.
+│     10.0%  ( 1/10)  Dermoid cyst
+│     10.0%  ( 1/10)  Pilar Cyst (Trichilemmal Cyst) of the posterior neck.
+│     10.0%  ( 1/10)  Epidermal inclusion cyst (sebaceous cyst) of the posterior neck.
+│     10.0%  ( 1/10)  Metastatic cervical lymphadenopathy, likely from past colon cancer.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_15.json
+
+===== case_16 | correct: C. difficile colitis =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Antibiotic-associated diarrhea due to levofloxacin, with mild dehydration.
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea due to levofloxacin therapy.
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea (non-Clostridioides difficile) secondary to levofloxacin.
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea (non-infectious) likely due to levofloxacin.
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea (non-Clostridium difficile) secondary to levofloxacin use.
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea secondary to levofloxacin therapy, with mild dehydration.
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea due to *Clostridioides difficile* infection. I recommend stopping levofloxacin if possible, starting oral vancomycin or fidaxomicin, and ensuring aggressive rehydration. Please monitor for worsening dehydration and follow up.
+│     10.0%  ( 1/10)  Antibiotic-Associated Diarrhea (non-C. difficile)
+│     10.0%  ( 1/10)  Antibiotic-associated diarrhea (non-C. difficile) due to levofloxacin.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_16.json
+
+===== case_17 | correct: Pyoderma gangrenosum =====
+Diagnosis distribution (N=10, distinct=5, entropy=1.771 bits):
+│     60.0%  ( 6/10)  Pyoderma gangrenosum
+│     10.0%  ( 1/10)  Pyoderma gangrenosum. You should see a dermatologist and a gastroenterologist to coordinate treatment, likely starting with topical or oral corticosteroids or other immunosuppressants.
+│     10.0%  ( 1/10)  Venous Stasis Ulcer
+│     10.0%  ( 1/10)  Pyoderma gangrenosum, associated with Crohn's disease.
+│     10.0%  ( 1/10)  Pyoderma gangrenosum.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_17.json
+
+===== case_18 | correct: Uterine rupture =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Uterine rupture
+│     10.0%  ( 1/10)  Uterine rupture with intra-abdominal hemorrhage and fetal distress.
+│     10.0%  ( 1/10)  Uterine Rupture with Hemoperitoneum and Fetal Distress.
+│     10.0%  ( 1/10)  Uterine rupture at site of previous cesarean scar, with fetal distress. Immediate emergency cesarean section is required.
+│     10.0%  ( 1/10)  Uterine rupture at prior cesarean scar with hemoperitoneum
+│     10.0%  ( 1/10)  Uterine rupture with fetal distress and hemorrhagic shock. Immediate emergency cesarean delivery is required.
+│     10.0%  ( 1/10)  Uterine rupture in a pregnant patient at 38 weeks with previous cesarean section. Immediate emergency cesarean delivery and surgical repair are required.
+│     10.0%  ( 1/10)  Uterine rupture at previous cesarean scar with hemoperitoneum.
+│     10.0%  ( 1/10)  Uterine rupture at the site of previous cesarean scar with hemoperitoneum. This is a life-threatening emergency — immediate delivery via emergency cesarean section and surgical repair are needed.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_18.json
+
+===== case_19 | correct: Disc herniation =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  Lumbar disc herniation at L5-S1 with radiculopathy.
+│     10.0%  ( 1/10)  L5-S1 disc herniation with S1 radiculopathy.
+│     10.0%  ( 1/10)  L5-S1 disc herniation with right-sided radiculopathy (likely S1 nerve root compression).
+│     10.0%  ( 1/10)  Lumbar radiculopathy secondary to acute lumbar disc herniation (likely L4-L5 or L5-S1).
+│     10.0%  ( 1/10)  L5-S1 disc herniation with nerve root impingement, causing sciatica. The good news is most cases resolve with conservative care—rest from heavy lifting, anti-inflammatory medication, and physical therapy. I'll prescribe a short course of NSAIDs and refer you to a physiotherapist for core strengthening and posture correction. Avoid sitting for long periods, and please follow up if you develop any numbness, weakness, or bladder issues.
+│     10.0%  ( 1/10)  Lumbar radiculopathy due to L5-S1 disc herniation with L5 nerve root compression.
+│     10.0%  ( 1/10)  L5-S1 Disc Herniation with Right S1 Nerve Root Radiculopathy.
+│     10.0%  ( 1/10)  L5-S1 lumbar disc herniation with left L5 nerve root compression, presenting as acute sciatica and foot drop.
+│     10.0%  ( 1/10)  Lumbar radiculopathy likely due to a herniated intervertebral disc at the L5-S1 level.
+│     10.0%  ( 1/10)  Lumbar disc herniation with radiculopathy (likely L5-S1)
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_19.json
+
+===== case_20 | correct: Cytomegalovirus retinitis =====
+Diagnosis distribution (N=10, distinct=5, entropy=2.246 bits):
+│     30.0%  ( 3/10)  Cytomegalovirus (CMV) retinitis of the right eye.
+│     20.0%  ( 2/10)  CMV retinitis (right eye)
+│     20.0%  ( 2/10)  CMV retinitis
+│     20.0%  ( 2/10)  Cytomegalovirus (CMV) retinitis
+│     10.0%  ( 1/10)  CMV retinitis with retinal detachment
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_20.json
+
+===== case_21 | correct: Reactive Arthritis =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.646 bits):
+│     30.0%  ( 3/10)  Reactive arthritis (Reiter's syndrome)
+│     20.0%  ( 2/10)  Reactive Arthritis (likely post-chlamydial)
+│     10.0%  ( 1/10)  Reactive Arthritis (formerly Reiter's syndrome)
+│     10.0%  ( 1/10)  Reactive Arthritis
+│     10.0%  ( 1/10)  Reactive arthritis (formerly Reiter's syndrome), likely triggered by a genitourinary or enteric infection despite negative initial tests. I recommend treatment with NSAIDs and possibly a short course of corticosteroids for your joint and eye symptoms. You should see a rheumatologist for follow-up and consider further testing for other triggers if symptoms persist.
+│     10.0%  ( 1/10)  Reactive arthritis (formerly Reiter's syndrome), likely triggered by an undetected urogenital infection.
+│     10.0%  ( 1/10)  Reactive arthritis (Reiter's syndrome) likely triggered by a sexually transmitted infection.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_21.json
+
+===== case_22 | correct: Malignant melanoma =====
+Diagnosis distribution (N=10, distinct=5, entropy=2.122 bits):
+│     40.0%  ( 4/10)  Malignant melanoma
+│     20.0%  ( 2/10)  Malignant melanoma of the chest.
+│     20.0%  ( 2/10)  Malignant melanoma.
+│     10.0%  ( 1/10)  Basal Cell Carcinoma (BCC) of the skin
+│     10.0%  ( 1/10)  Seborrheic keratosis
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_22.json
+
+===== case_23 | correct: Irritable Bowel Syndrome =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.846 bits):
+│     30.0%  ( 3/10)  Irritable Bowel Syndrome (IBS-D)
+│     10.0%  ( 1/10)  Post-infectious Irritable Bowel Syndrome (IBS-D)
+│     10.0%  ( 1/10)  Irritable Bowel Syndrome with predominant diarrhea (IBS-D), likely post-infectious.
+│     10.0%  ( 1/10)  Irritable Bowel Syndrome with predominant diarrhea (IBS-D)
+│     10.0%  ( 1/10)  Giardiasis (chronic Giardia infection)
+│     10.0%  ( 1/10)  [diagnosis]". So I can make a diagnosis now if I wish. I have to balance. Given the information, I think the most likely is Irritable Bowel Syndrome. I'll make that diagnosis. But let's see: The patient has had symptoms for 4 months, no red flags, no blood, no weight loss, normal tests. The greasy stool could be due to IBS? Actually, IBS can have mucus but not typically gre
+│     10.0%  ( 1/10)  Irritable Bowel Syndrome, diarrhea-predominant (IBS-D)
+│     10.0%  ( 1/10)  Celiac disease
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_23.json
+
+===== case_24 | correct: Meigs syndrome =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.646 bits):
+│     30.0%  ( 3/10)  Meigs' syndrome
+│     20.0%  ( 2/10)  Meigs' syndrome (benign ovarian fibroma with ascites and pleural effusion)
+│     10.0%  ( 1/10)  Meigs' syndrome (benign ovarian tumor with associated ascites and pleural effusion)
+│     10.0%  ( 1/10)  Meigs' syndrome (ovarian fibroma with ascites and pleural effusion).
+│     10.0%  ( 1/10)  Meigs' syndrome (likely due to ovarian fibroma)
+│     10.0%  ( 1/10)  Meigs' syndrome (benign ovarian tumor with ascites and pleural effusion).
+│     10.0%  ( 1/10)  Meigs' syndrome (likely ovarian fibroma with ascites and pleural effusion).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_24.json
+
+===== case_25 | correct: Primary sclerosing cholangitis =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.846 bits):
+│     30.0%  ( 3/10)  Primary sclerosing cholangitis (PSC)
+│     10.0%  ( 1/10)  Primary Biliary Cholangitis
+│     10.0%  ( 1/10)  Small-duct primary sclerosing cholangitis
+│     10.0%  ( 1/10)  Primary sclerosing cholangitis (small duct variant)
+│     10.0%  ( 1/10)  Primary Sclerosing Cholangitis (PSC) associated with ulcerative colitis.
+│     10.0%  ( 1/10)  Small duct primary sclerosing cholangitis.
+│     10.0%  ( 1/10)  Primary Sclerosing Cholangitis
+│     10.0%  ( 1/10)  Primary sclerosing cholangitis (small-duct variant)**
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_25.json
+
+===== case_26 | correct: Interstitial cystitis =====
+Diagnosis distribution (N=10, distinct=4, entropy=1.685 bits):
+│     50.0%  ( 5/10)  Interstitial Cystitis (Bladder Pain Syndrome)
+│     30.0%  ( 3/10)  Interstitial Cystitis/Bladder Pain Syndrome
+│     10.0%  ( 1/10)  Interstitial cystitis / Painful bladder syndrome
+│     10.0%  ( 1/10)  Interstitial cystitis (also known as painful bladder syndrome).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_26.json
+
+===== case_27 | correct: Adhesive capsulitis =====
+Diagnosis distribution (N=10, distinct=5, entropy=2.046 bits):
+│     40.0%  ( 4/10)  Adhesive capsulitis (frozen shoulder) of the left shoulder.
+│     30.0%  ( 3/10)  Adhesive capsulitis (frozen shoulder)
+│     10.0%  ( 1/10)  Adhesive capsulitis (frozen shoulder) of the left shoulder. Given your age, diabetes, classic pattern of stiffness and pain with passive limitation, and normal MRI, this is the most likely cause. I recommend physical therapy focused on gentle stretching and anti-inflammatory management.
+│     10.0%  ( 1/10)  Adhesive capsulitis (frozen shoulder) of the left shoulder
+│     10.0%  ( 1/10)  Adhesive Capsulitis (Frozen Shoulder) – Left Shoulder, likely stage 2 (Frozen Stage). Recommend physical therapy, NSAIDs, intra-articular corticosteroid injection, and consider MRI if no improvement.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_27.json
+
+===== case_28 | correct: Lung cancer =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  Primary adrenal insufficiency (Addison's disease) causing hyponatremia.
+│     10.0%  ( 1/10)  Euvolemic hyponatremia likely due to SIADH or thiazide diuretic use.
+│     10.0%  ( 1/10)  Syndrome of Inappropriate Antidiuretic Hormone (SIADH) causing hyponatremia
+│     10.0%  ( 1/10)  Syndrome of Inappropriate Antidiuretic Hormone (SIADH) causing hyponatremia.
+│     10.0%  ( 1/10)  Symptomatic hyponatremia (severe low sodium) likely causing your confusion and sleepiness. I'll recommend further evaluation for the underlying cause, such as SIADH or adrenal insufficiency, and initiate appropriate treatment.
+│     10.0%  ( 1/10)  Hyponatremia likely due to thiazide diuretic use, presenting with confusion and drowsiness.
+│     10.0%  ( 1/10)  Syndrome of Inappropriate Antidiuretic Hormone (SIADH) likely induced by lisinopril.
+│     10.0%  ( 1/10)  Hyponatremia due to hydrochlorothiazide use (drug-induced hyponatremia causing acute confusion).
+│     10.0%  ( 1/10)  Medication-induced hyponatremia (likely from thiazide diuretic) presenting with acute confusion and altered mental status.
+│     10.0%  ( 1/10)  Syndrome of Inappropriate Antidiuretic Hormone Secretion (SIADH) causing hyponatremia.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_28.json
+
+===== case_29 | correct: Disseminated Gonococcal Infection =====
+Diagnosis distribution (N=10, distinct=5, entropy=2.046 bits):
+│     40.0%  ( 4/10)  Disseminated gonococcal infection (DGI)
+│     30.0%  ( 3/10)  Disseminated gonococcal infection
+│     10.0%  ( 1/10)  Disseminated gonococcal infection (DGI) presenting with arthritis-dermatitis syndrome, confirmed by synovial fluid Gram stain showing Gram-negative diplococci and positive STI screen.
+│     10.0%  ( 1/10)  Disseminated gonococcal infection (DGI) presenting with dermatitis-tenosynovitis syndrome. You will need intravenous antibiotics such as ceftriaxone, and your partner should be treated as well. I'll arrange for your admission and treatment plan.
+│     10.0%  ( 1/10)  Disseminated gonococcal infection (gonococcal arthritis-dermatitis syndrome).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_29.json
+
+===== case_30 | correct: Respiratory Distress Syndrome =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.846 bits):
+│     30.0%  ( 3/10)  Respiratory Distress Syndrome (RDS) due to surfactant deficiency.
+│     10.0%  ( 1/10)  Respiratory Distress Syndrome (RDS) due to surfactant deficiency in a premature infant.
+│     10.0%  ( 1/10)  Respiratory Distress Syndrome (Surfactant Deficiency)
+│     10.0%  ( 1/10)  Respiratory Distress Syndrome (Hyaline Membrane Disease) due to surfactant deficiency.
+│     10.0%  ( 1/10)  Respiratory Distress Syndrome (Neonatal) due to surfactant deficiency**
+│     10.0%  ( 1/10)  Neonatal Respiratory Distress Syndrome (RDS) due to surfactant deficiency.
+│     10.0%  ( 1/10)  Respiratory Distress Syndrome (RDS) in a premature newborn
+│     10.0%  ( 1/10)  Respiratory Distress Syndrome (RDS)
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_30.json
+
+===== case_31 | correct: Chronic lymphocytic leukemia =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.846 bits):
+│     30.0%  ( 3/10)  Chronic Lymphocytic Leukemia (CLL)
+│     10.0%  ( 1/10)  Chronic Lymphocytic Leukemia/Small Lymphocytic Lymphoma (CLL/SLL). Your flow cytometry confirms the presence of monoclonal B lymphocytes consistent with this condition. I'll discuss next steps for management and monitoring.
+│     10.0%  ( 1/10)  Suspected recurrence of testicular cancer with metastatic disease
+│     10.0%  ( 1/10)  Chronic Lymphocytic Leukemia/Small Lymphocytic Lymphoma (CLL/SLL)
+│     10.0%  ( 1/10)  Adrenal insufficiency (likely secondary due to absence of hyperpigmentation, but consider primary as well). Recommend REQUEST TEST: ACTH stimulation test and serum cortisol levels.
+│     10.0%  ( 1/10)  Major Depressive Disorder (Given negative organic workup, history of cancer remission, and weight loss with normal appetite, psychosocial factors are likely contributing to fatigue and weight loss.)
+│     10.0%  ( 1/10)  Chronic Lymphocytic Leukemia (CLL)/Small Lymphocytic Lymphoma (SLL)
+│     10.0%  ( 1/10)  Chronic Lymphocytic Leukemia
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_31.json
+
+===== case_32 | correct: Fulminant hepatic failure =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  Drug-induced acute liver failure with hepatic encephalopathy secondary to ecstasy
+│     10.0%  ( 1/10)  Drug-induced acute liver failure with hepatic encephalopathy secondary to ecstasy and/or cocaine use.
+│     10.0%  ( 1/10)  Acute drug-induced liver injury (likely due to MDMA and cocaine) with early hepatic encephalopathy and coagulopathy.
+│     10.0%  ( 1/10)  Acute liver failure secondary to MDMA (ecstasy) toxicity, likely with hepatic encephalopathy."
+│     10.0%  ( 1/10)  Acute liver failure secondary to drug-induced hepatotoxicity (cocaine and ecstasy use).
+│     10.0%  ( 1/10)  Drug-induced acute liver failure (likely from cocaine and ecstasy) causing hepatic encephalopathy.
+│     10.0%  ( 1/10)  Acute liver failure secondary to drug-induced liver injury (likely MDMA/ecstasy) with hepatic encephalopathy and coagulopathy.
+│     10.0%  ( 1/10)  Acute liver failure due to drug-induced liver injury (likely from cocaine and ecstasy use) presenting with unconjugated hyperbilirubinemia, elevated liver enzymes, coagulopathy, and hepatic encephalopathy.
+│     10.0%  ( 1/10)  Acute liver failure with hepatic encephalopathy, likely secondary to drug-induced liver injury from cocaine and ecstasy use, given the exclusion of viral, autoimmune, metabolic, and obstructive causes.
+│     10.0%  ( 1/10)  Acute liver failure due to acute hepatitis B infection**
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_32.json
+
+===== case_33 | correct: Coarctation of the aorta =====
+Diagnosis distribution (N=10, distinct=5, entropy=2.046 bits):
+│     40.0%  ( 4/10)  Coarctation of the aorta
+│     30.0%  ( 3/10)  Coarctation of the aorta.
+│     10.0%  ( 1/10)  Coarctation of the aorta (postductal, distal to left subclavian artery)
+│     10.0%  ( 1/10)  Essential Hypertension (likely primary, given normal exams and tests) — however, at age 5, secondary causes are more common. I will consider further testing if symptoms develop. For now, diagnosis is Essential Hypertension. Wait, I cannot decide yet; I need more information. Let me ask: Have you ever had a test called a renal artery Doppler or an MRI of your abdomen? And do you take any caffeine or energy drinks? Actually, I must follow the format. Let me ask one more question.
+│     10.0%  ( 1/10)  Coarctation of the aorta. I recommend referral to a pediatric cardiologist for management and possible intervention.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_33.json
+
+===== case_34 | correct: Erythema Infectiosum =====
+Diagnosis distribution (N=10, distinct=6, entropy=2.322 bits):
+│     40.0%  ( 4/10)  Erythema infectiosum (Fifth disease)
+│     20.0%  ( 2/10)  Fifth disease (Erythema infectiosum)
+│     10.0%  ( 1/10)  Erythema infectiosum (Fifth disease) due to parvovirus B19, consistent with clinical presentation despite negative test results—likely early infection or mild case.
+│     10.0%  ( 1/10)  Viral exanthem (likely enteroviral or adenoviral infection).
+│     10.0%  ( 1/10)  Viral exanthem (non-specific)
+│     10.0%  ( 1/10)  Viral exanthem (likely mild erythema infectiosum / fifth disease).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_34.json
+
+===== case_35 | correct: Glanzmann’s Thrombasthenia =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Ehlers-Danlos Syndrome (hypermobile type)
+│     10.0%  ( 1/10)  Glanzmann thrombasthenia
+│     10.0%  ( 1/10)  Factor XIII deficiency
+│     10.0%  ( 1/10)  Platelet function disorder (e.g., Glanzmann thrombasthenia or Bernard-Soulier syndrome) – recommend confirmatory platelet aggregation studies.
+│     10.0%  ( 1/10)  Mild von Willebrand disease (type 1) – though initial panel was normal, symptoms and lack of other causes strongly suggest this. I recommend a repeat von Willebrand factor panel at a later date and consider specialist referral.
+│     10.0%  ( 1/10)  Mild platelet function disorder (suspected storage pool or release defect)
+│     10.0%  ( 1/10)  Hereditary Hemorrhagic Telangiectasia (Osler-Weber-Rendu disease)
+│     10.0%  ( 1/10)  von Willebrand disease (mild type).
+│     10.0%  ( 1/10)  Henoch-Schönlein Purpura (IgA Vasculitis)
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_35.json
+
+===== case_36 | correct: Osteoclastoma =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.522 bits):
+│     40.0%  ( 4/10)  Giant cell tumor of the left distal femur.
+│     10.0%  ( 1/10)  Giant Cell Tumor of Bone (left distal femur)
+│     10.0%  ( 1/10)  Benign bone tumor of the distal femur (likely enchondroma or non-ossifying fibroma) with secondary reactive synovitis and joint effusion.
+│     10.0%  ( 1/10)  Giant cell tumor of bone of the left distal femur.
+│     10.0%  ( 1/10)  Giant Cell Tumor of the distal femur (left knee)
+│     10.0%  ( 1/10)  Left knee monoarticular inflammatory arthritis, likely early psoriatic arthritis or reactive arthritis given normal aspiration and no infection. However, without skin or gut symptoms, I’d recommend further imaging. But per protocol, I must diagnose now. I’ll proceed.
+│     10.0%  ( 1/10)  Giant Cell Tumor of the Left Distal Femur
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_36.json
+
+===== case_37 | correct: Multiple system atrophy =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.846 bits):
+│     30.0%  ( 3/10)  Multiple System Atrophy (MSA)
+│     10.0%  ( 1/10)  Multiple System Atrophy (MSA)**
+│     10.0%  ( 1/10)  Multiple System Atrophy (MSA), likely cerebellar subtype (MSA-C)
+│     10.0%  ( 1/10)  Multiple System Atrophy (MSA), likely parkinsonian subtype (MSA-P).
+│     10.0%  ( 1/10)  Multiple System Atrophy (MSA), parkinsonian subtype (MSA-P).
+│     10.0%  ( 1/10)  Progressive Supranuclear Palsy (PSP)
+│     10.0%  ( 1/10)  Multiple System Atrophy (MSA), parkinsonian subtype (MSA-P)
+│     10.0%  ( 1/10)  Multiple System Atrophy (MSA), Parkinsonian variant (MSA-P) with cerebellar and autonomic features.
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_37.json
+
+===== case_38 | correct: Duodenal atresia =====
+Diagnosis distribution (N=10, distinct=3, entropy=0.922 bits):
+│     80.0%  ( 8/10)  Duodenal atresia
+│     10.0%  ( 1/10)  Duodenal atresia.
+│     10.0%  ( 1/10)  Duodenal atresia.**
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_38.json
+
+===== case_39 | correct: Essential thrombocythemia =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.922 bits):
+│     20.0%  ( 2/10)  Essential Thrombocythemia
+│     20.0%  ( 2/10)  Polycythemia Vera
+│     10.0%  ( 1/10)  Essential Thrombocythemia (ET)
+│     10.0%  ( 1/10)  Limited cutaneous systemic sclerosis (CREST syndrome variant)
+│     10.0%  ( 1/10)  Essential Thrombocythemia (Primary Thrombocythemia)
+│     10.0%  ( 1/10)  Polycythemia Vera (JAK2-negative variant)
+│     10.0%  ( 1/10)  
+│     10.0%  ( 1/10)  Essential Thrombocythemia (ET).
+└─ source → results/diag_dist_flash_0-39/temp_0.05/case_39.json

@@ -1,23 +1,32 @@
+# ── Python ──
 **/__pycache__/
-*_results*.py
-*_rresult_categorize*.py
+*.pyc
 *.out
+.venv/
 
-# Local environment / secrets — never commit
+# ── Secrets — never commit ──
 .env
 .env.local
 .env.*.local
 
-# OS junk
+# ── OS junk ──
 .DS_Store
+__MACOSX/
 
-# Experiment outputs — keep these local, don't bloat the repo
-*.csv
-anchor_compare_*.json
+# ── results/ : 两层规则 ──
+# 重的、可再跑出来的数据 → 忽略（原始 case 数据 / 运行日志 / LLM 缓存 / embedding 向量 等）
+results/**/*.json
+results/**/*.jsonl
+results/**/*.npz
+results/**/*.pdf
+results/**/*.log
+results/**/logs/
+results/**/transcripts/
+# 小而宝贵的最终结论（相似度矩阵 / 散度 / summary 等 .csv/.txt）默认入库，不在此忽略。
+
+# ── 归档的可再生产物（png/pptx/zip 等，留盘不入库）──
+generated_outputs/
+
+# ── 顶层运行日志（旧位置，逐步迁入 results/）──
 trial_log.jsonl
-
-*.json
-results/
-
-# Python virtual env
-.venv/
+deployment_log.jsonl

@@ -1,0 +1,118 @@
+### Group: diag_dist_pro_40-49 (10 cases) ###
+
+===== case_40 | correct: Medullary Sponge Kidney =====
+Diagnosis distribution (N=10, distinct=8, entropy=2.922 bits):
+│     20.0%  ( 2/10)  Loin pain hematuria syndrome.
+│     20.0%  ( 2/10)  Acute Pyelonephritis
+│     10.0%  ( 1/10)  Suspected urothelial carcinoma, likely of the bladder, presenting with hematuria and right flank pain, given recurrent hematuria/UTI-like symptoms, sterile pyuria, and normal CT urogram. Urgent cystoscopy is recommended.
+│     10.0%  ( 1/10)  Loin pain-hematuria syndrome
+│     10.0%  ( 1/10)  Loin pain hematuria syndrome (LPHS)
+│     10.0%  ( 1/10)  Loin pain hematuria syndrome
+│     10.0%  ( 1/10)  
+│     10.0%  ( 1/10)  Medullary Sponge Kidney
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_40.json
+
+===== case_41 | correct: Genitopelvic pain disorder =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.522 bits):
+│     40.0%  ( 4/10)  vaginismus
+│     10.0%  ( 1/10)  Vaginismus (genito-pelvic pain/penetration disorder).
+│     10.0%  ( 1/10)  Vaginismus.
+│     10.0%  ( 1/10)  Vaginismus (secondary, provoked) related to performance anxiety and emotional pressure to conceive
+│     10.0%  ( 1/10)  Genito-pelvic pain/penetration disorder (primary vaginismus) with female sexual arousal dysfunction.
+│     10.0%  ( 1/10)  Vaginismus (secondary to body dysmorphic disorder and performance anxiety)
+│     10.0%  ( 1/10)  Vaginismus (secondary) causing unconsummated intercourse and infertility, exacerbated by body dysmorphic disorder and anxiety.
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_41.json
+
+===== case_42 | correct: Active chronic hepatitis B infection =====
+Diagnosis distribution (N=10, distinct=6, entropy=2.446 bits):
+│     30.0%  ( 3/10)  Acute Hepatitis B
+│     20.0%  ( 2/10)  Acute Hepatitis B infection
+│     20.0%  ( 2/10)  Chronic Hepatitis B infection with acute exacerbation
+│     10.0%  ( 1/10)  Chronic Hepatitis B with acute exacerbation.
+│     10.0%  ( 1/10)  Acute Hepatitis B.
+│     10.0%  ( 1/10)  Acute Hepatitis B Infection.
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_42.json
+
+===== case_43 | correct: Acute Mesenteric Ischemia =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Acute mesenteric ischemia.
+│     10.0%  ( 1/10)  Acute mesenteric ischemia, likely due to superior mesenteric artery embolism or thrombosis in the setting of recent myocardial infarction.
+│     10.0%  ( 1/10)  Acute Mesenteric Ischemia
+│     10.0%  ( 1/10)  Acute non-occlusive mesenteric ischemia causing ischemic colitis.
+│     10.0%  ( 1/10)  Acute mesenteric ischemia, likely due to superior mesenteric artery embolism
+│     10.0%  ( 1/10)  Acute mesenteric ischemia (likely embolic due to recent myocardial infarction)
+│     10.0%  ( 1/10)  Acute mesenteric ischemia, likely embolic, secondary to recent myocardial infarction with stent placement and subsequent cardiac thrombus.
+│     10.0%  ( 1/10)  Acute mesenteric ischemia, likely embolic from recent myocardial infarction.
+│     10.0%  ( 1/10)  Acute mesenteric ischemia, likely from an embolus due to atrial fibrillation, causing reduced blood flow to the bowel.
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_43.json
+
+===== case_44 | correct: Asthma =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  ACE inhibitor-induced cough due to enalapril.
+│     10.0%  ( 1/10)  ACE inhibitor-induced cough (enalapril-induced cough)
+│     10.0%  ( 1/10)  Asthma
+│     10.0%  ( 1/10)  ACE inhibitor-induced cough
+│     10.0%  ( 1/10)  Cough-variant asthma.
+│     10.0%  ( 1/10)  Asthma.
+│     10.0%  ( 1/10)  Enalapril-induced cough.
+│     10.0%  ( 1/10)  Asthma (cough-variant)."
+│     10.0%  ( 1/10)  Gastroesophageal reflux disease (GERD) with laryngopharyngeal reflux causing chronic cough.
+│     10.0%  ( 1/10)  Gastroesophageal reflux disease (GERD) with laryngopharyngeal reflux, likely causing your chronic cough, sour taste, hoarseness, and throat discomfort.
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_44.json
+
+===== case_45 | correct: Roseola infantum =====
+Diagnosis distribution (N=10, distinct=6, entropy=2.161 bits):
+│     50.0%  ( 5/10)  Roseola infantum (exanthem subitum)
+│     10.0%  ( 1/10)  Roseola infantum (exanthem subitum) with associated simple febrile seizure.
+│     10.0%  ( 1/10)  Roseola infantum (exanthem subitum) with a febrile seizure.
+│     10.0%  ( 1/10)  Roseola infantum (exanthem subitum) due to human herpesvirus 6. The presentation of high fever resolving with the onset of a maculopapular rash on the trunk, along with the absence of other infectious signs, is classic.
+│     10.0%  ( 1/10)  Roseola infantum (exanthem subitum) likely due to human herpesvirus 6 (HHV-6).
+│     10.0%  ( 1/10)  Roseola infantum (exanthem subitum) caused by human herpesvirus 6 (HHV-6).
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_45.json
+
+===== case_46 | correct: Eczematous dermatitis =====
+Diagnosis distribution (N=10, distinct=9, entropy=3.122 bits):
+│     20.0%  ( 2/10)  Lichen simplex chronicus
+│     10.0%  ( 1/10)  Lichen simplex chronicus (neurodermatitis).
+│     10.0%  ( 1/10)  Nummular dermatitis (discoid eczema).
+│     10.0%  ( 1/10)  Lichen simplex chronicus.
+│     10.0%  ( 1/10)  Irritant Contact Dermatitis (Frictional)
+│     10.0%  ( 1/10)  Nummular eczema (discoid dermatitis).
+│     10.0%  ( 1/10)  Nummular eczema
+│     10.0%  ( 1/10)  Lichen simplex chronicus of the forearms, likely triggered by habitual or unconscious scratching at night and while working, with no evidence of infection or systemic cause.
+│     10.0%  ( 1/10)  keratosis pilaris
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_46.json
+
+===== case_47 | correct: Osteoarthritis =====
+Diagnosis distribution (N=10, distinct=5, entropy=1.771 bits):
+│     60.0%  ( 6/10)  Gout
+│     10.0%  ( 1/10)  Osteoarthritis of the hips and knees, likely primary, with referred or mechanical pain in the left great toe despite normal X-ray.
+│     10.0%  ( 1/10)  Osteoarthritis of the knees and hips (weight-bearing joints) and recurrent gout, currently presenting with intermittent acute podagra and chronic mechanical joint pain.
+│     10.0%  ( 1/10)  Gout (recurrent acute podagra) with underlying risk factors (alcohol, hydrochlorothiazide, diabetes).
+│     10.0%  ( 1/10)  Osteoarthritis affecting bilateral knees, bilateral hips, and left first metatarsophalangeal joint (hallux rigidus), with associated obesity and symptom aggravation by activity.
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_47.json
+
+===== case_48 | correct: Hemophilia =====
+Diagnosis distribution (N=10, distinct=7, entropy=2.522 bits):
+│     40.0%  ( 4/10)  
+│     10.0%  ( 1/10)  Mild Hemophilia A (factor VIII deficiency) carrier state. Your symptoms of easy bruising and prolonged bleeding after wisdom tooth extraction, combined with your maternal uncle’s history of joint swelling, strongly suggest an X-linked bleeding disorder. While your factor VIII assay was read as "normal," levels can fall into a low-normal range in female carriers that standard lab reports may not flag as deficient, yet still lead to bleeding challenges. The prolonged PT and aPTT may be influenced by other variables, but the family pattern is most consistent with mild hemophilia A.
+│     10.0%  ( 1/10)  Mild inherited bleeding disorder, likely similar to your uncle’s condition, consistent with a probable rare clotting factor deficiency or platelet dysfunction not fully captured by standard assays, given the prolonged aPTT and family history.
+│     10.0%  ( 1/10)  Hemophilia A (mild)
+│     10.0%  ( 1/10)  Factor XII deficiency (Hageman factor deficiency)
+│     10.0%  ( 1/10)  Mild Hemophilia A (Factor VIII deficiency)
+│     10.0%  ( 1/10)  Mild von Willebrand disease type 1.
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_48.json
+
+===== case_49 | correct: Steven-Johnson syndrome =====
+Diagnosis distribution (N=10, distinct=10, entropy=3.322 bits):
+│     10.0%  ( 1/10)  Methotrexate-induced toxicity (mucositis and probable pulmonary involvement)
+│     10.0%  ( 1/10)  Methotrexate toxicity due to suspected daily dosing error, presenting with drug-induced pneumonitis, non-blistering rash, and oral mucositis.
+│     10.0%  ( 1/10)  Drug-induced hypersensitivity reaction due to suspected leflunomide therapy, presenting with skin eruption, stomatitis, and possible pneumonitis. Stop the medication immediately and contact your rheumatologist without delay.
+│     10.0%  ( 1/10)  Morbilliform drug eruption secondary to amoxicillin, with associated oral mucositis.
+│     10.0%  ( 1/10)  Methotrexate-induced mucositis with widespread erosive stomatitis and associated skin rash, likely representing a severe drug hypersensitivity reaction. Stop methotrexate immediately and arrange urgent evaluation by your prescribing physician for airway monitoring and possible hospitalization.
+│     10.0%  ( 1/10)  Methotrexate-induced mucositis and rash, with possible early pulmonary involvement.
+│     10.0%  ( 1/10)  Methotrexate toxicity due to accidental daily intake, presenting with acute mucositis and rash.
+│     10.0%  ( 1/10)  Methotrexate toxicity (thrombocytopenia with petechiae, mucositis, and possible pneumonitis)
+│     10.0%  ( 1/10)  Stevens-Johnson syndrome
+│     10.0%  ( 1/10)  Erythema multiforme minor likely triggered by ibuprofen
+└─ source → results/diag_dist_pro_40-49/temp_0.05/case_49.json

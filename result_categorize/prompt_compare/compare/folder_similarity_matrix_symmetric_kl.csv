@@ -1,6 +1,0 @@
-folder,different_prompt/balanced_baseline,different_prompt/aggressive_efficiency_first,different_prompt/conservative_safety_first,different_prompt/distinct_diagnosis,different_prompt/low_cost_testing
-different_prompt/balanced_baseline,0.0,2.479628,2.181528,2.530034,2.712441
-different_prompt/aggressive_efficiency_first,2.479628,0.0,2.209023,2.406545,2.299478
-different_prompt/conservative_safety_first,2.181528,2.209023,0.0,1.826645,2.194923
-different_prompt/distinct_diagnosis,2.530034,2.406545,1.826645,0.0,2.536961
-different_prompt/low_cost_testing,2.712441,2.299478,2.194923,2.536961,0.0
