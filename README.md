@@ -6,22 +6,22 @@ AgentClinic is the simulation engine. This repo adds a thin trial layer on top �
 
 ---
 
-## 📁 模块结构（重构中）
+## 📁 Module Layout (refactor in progress)
 
-代码已按模块拆分，**每个模块目录下有自己的 `README.md`**。整体蓝图见 [`REFACTOR_PLAN.md`](REFACTOR_PLAN.md)。
+The code is split into modules, **each with its own `README.md`**. The full blueprint is in [`REFACTOR_PLAN.md`](REFACTOR_PLAN.md).
 
-| 模块 | 角色 |
-|------|------|
-| [`AgentClinic/`](AgentClinic/README.md) | ① 基础引擎（地基） |
-| [`trial/`](trial/README.md) | ② 在线试验框架 |
-| [`anchor_compare/`](anchor_compare/README.md) | C 锚定回归（在线实验） |
-| [`deployment_replay/`](deployment_replay/README.md) | E 部署重放（在线实验） |
-| [`generate_diagnosis_distribution/`](generate_diagnosis_distribution/README.md) | F 诊断分布生成（上游生产者） |
-| [`embedding_similarity/`](embedding_similarity/README.md) | G 诊断漂移 · Method B（向量+相似度） |
-| [`kl_js_divergence/`](kl_js_divergence/README.md) | I 诊断漂移 · Method A（分布+散度） |
-| [`history_borrowing/`](history_borrowing/README.md) | H 历史借用 / 性能估计 |
+| Module | Role |
+|--------|------|
+| [`AgentClinic/`](AgentClinic/README.md) | Simulation engine (the foundation) |
+| [`trial/`](trial/README.md) | Online trial framework |
+| [`anchor_compare/`](anchor_compare/README.md) | Anchored regression (behavioral drift) |
+| [`deployment_replay/`](deployment_replay/README.md) | Deployment replay / hybrid estimation |
+| [`generate_diagnosis_distribution/`](generate_diagnosis_distribution/README.md) | Diagnosis-distribution generator (upstream producer) |
+| [`embedding_similarity/`](embedding_similarity/README.md) | Drift · Method B (vectors + similarity) |
+| [`kl_js_divergence/`](kl_js_divergence/README.md) | Drift · Method A (distributions + divergence) |
+| [`history_borrowing/`](history_borrowing/README.md) | History borrowing / performance estimation |
 
-> ⚠️ **命令变更**：脚本已移入模块目录，请从**仓库根**运行，例如 `python trial/run_trial.py ...`（或 `python -m trial.run_trial ...`）。下文部分命令仍是旧的扁平路径，待同步更新。
+> ⚠️ **Commands moved**: scripts now live inside module dirs — run them from the **repo root**, e.g. `python trial/run_trial.py ...` (or `python -m trial.run_trial ...`). Some commands further down still use the old flat paths and need updating.
 
 ---
 

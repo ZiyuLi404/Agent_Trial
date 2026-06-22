@@ -1,45 +1,45 @@
-# history_borrowing — 历史借用 / 性能估计（H）
+# history_borrowing — History Borrowing / Performance Estimation (H)
 
-## 这个模块干嘛
-当某个模型在某个病例桶上**测的样本太少、准确率不可信**时，从**"行为长得像的其他模型"那里借数据**来修正它的估计——让少量样本也能估得更准。
+**When a model has too few cases in a bucket to trust its accuracy, borrow data from "models that behave similarly" to correct the estimate — so a small sample can still be estimated well.**
 
-属于**离线分析**：不跑问诊、不碰引擎，只读已经跑出来的准确率和相似度数据。
+Offline analysis — no consultations, no engine. Reads accuracy and similarity data that were already produced.
 
-## 输入
-- `accuracy_by_25_cases.csv` —— 每个桶的准确率 + 总金标准数（由 `accuracy_summary.py` 生成）
-- `*_similarity_matrix.csv` —— 模型间的相似度矩阵（来自 **G `embedding_similarity`** 的产出）
+## Inputs
+- `accuracy_by_25_cases.csv` — per-bucket accuracy + gold counts (from `accuracy_summary.py`)
+- `*_similarity_matrix.csv` — model-to-model similarity (from **`embedding_similarity` (G)**)
 
-## 怎么算（核心公式）
-把相似度转成距离 `d(A,B)=1-sim(A,B)`，再让每个模型按距离加权借用同伴的准确率：
+## How it works
+Turn similarity into distance `d(A,B) = 1 - sim(A,B)`, then let each model borrow its peers' accuracy, distance-weighted:
 
 ```
-theta_borrowed_j = alpha * theta_j + (1-alpha) * Σ_{i≠j} w_ij * theta_i
+theta_borrowed_j = alpha * theta_j + (1 - alpha) * Σ_{i≠j} w_ij * theta_i
 ```
 
-`alpha` 控制"信自己 vs 信同伴"，`w_ij` 由距离经 `lambda` 加权。
+`alpha` trades off "trust myself" vs "trust peers"; `w_ij` comes from distance via `lambda`.
 
-## 脚本（5 个 = 5 个真步骤，按顺序）
-| 脚本 | 步骤 |
+## Files (5 = 5 real steps, kept separate)
+| File | Step |
 |------|------|
-| `accuracy_summary.py` | 从 groundtruth 目录汇总每桶准确率 → `accuracy_by_25_cases.csv` |
-| `history_borrowing.py` | 单次借用估计（给定 alpha/lambda） |
-| `run_all_orders.py` | 对 24 种"桶↔模型"排列各跑一遍 `history_borrowing.py` |
-| `train_borrow_params.py` | 全局调一对 (alpha, lambda)，最小化所有排列/模型的平均 MAE |
-| `visualize_borrow_params.py` | 把结果画成 dashboard |
+| `accuracy_summary.py` | Summarize per-bucket accuracy → `accuracy_by_25_cases.csv` |
+| `history_borrowing.py` | One borrowing estimate (given alpha/lambda) |
+| `run_all_orders.py` | Run `history_borrowing.py` over all 24 bucket↔model permutations |
+| `train_borrow_params.py` | Fit one global (alpha, lambda) minimizing mean MAE |
+| `visualize_borrow_params.py` | Render the results as a dashboard |
 
-## 怎么跑
+## Run
 ```bash
-# 从仓库根目录运行
+# from the repo root
 python history_borrowing/accuracy_summary.py --groundtruth_dir history_borrowing/groundtruth
-python history_borrowing/history_borrowing.py --accuracy_csv history_borrowing/accuracy_by_25_cases.csv ...
+python history_borrowing/history_borrowing.py --accuracy_csv ... --similarity_csv ...
 python history_borrowing/run_all_orders.py
 python history_borrowing/train_borrow_params.py
 python history_borrowing/visualize_borrow_params.py --source diagnosis
 ```
 
-## 与其他模块的关系
-- 上游：**G `embedding_similarity`** 产的相似度矩阵是本模块的输入。
-- 兄弟：和 **E `deployment_replay`** 同属"新版本数据太少怎么借历史"——H 横向借（从相似模型），E 纵向借（从自己版本的老病例）。
+## Relationship
+- Upstream: similarity matrices from **`embedding_similarity` (G)**.
+- Sibling of **`deployment_replay` (E)**: both are "a new version has too little data — borrow from the past." H borrows *horizontally* (similar models), E borrows *vertically* (its own old cases).
 
-## 重构待办
-- ⏳ 产物 / 中间数据按全局蓝图迁到 `results/history_borrowing/`（目前仍留在本目录，argparse 默认路径也指向本目录）。详见根目录 `REFACTOR_PLAN.md` §5。
+## Notes
+- ✅ Renamed `performance_estimation → history_borrowing`; internal self-paths updated.
+- This folder currently holds only code (its data was produced elsewhere). When run, outputs/data should go under `results/history_borrowing/` (see `REFACTOR_PLAN.md`).
