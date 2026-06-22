@@ -24,8 +24,8 @@ Each `case_X.json` has `scenario_id`, `runs`, `distribution` (per-bucket counts)
 # from the repo root
 python generate_diagnosis_distribution/diagnosis_distribution.py \
     --doctor_llm deepseek-v4-flash --scenario_ids 0,1,2 --runs 30 ...
-# multiple models in one sweep (GPT is just another model value):
-python generate_diagnosis_distribution/diagnosis_distribution.py --doctor_llm gpt-5.5,gpt-5-mini ...
+# multiple models in one sweep (comma-separated; GPT is just another value):
+python generate_diagnosis_distribution/diagnosis_distribution.py --doctor_llm deepseek-v4-flash,deepseek-v4-pro ...
 ```
 
 ## Notes
