@@ -25,21 +25,6 @@ The code is split into modules, **each with its own `README.md`**. The full blue
 
 ---
 
-## Two-Doctor Workflow
-
-Each case runs through two independent agents inside `AgentClinic/agentclinic.py`:
-
-1. **DoctorAgent** — conducts the clinical interview, orders tests, and produces a diagnosis.
-2. **ReviewerAgent** — reads the complete dialogue transcript and independently diagnoses the same case.
-
-**Agreement check:**
-- If DoctorAgent and ReviewerAgent **agree**, the case is evaluated against the ground-truth diagnosis (moderator judgment) and counted in accuracy.
-- If they **disagree**, the case is excluded from accuracy. A short doctor–reviewer discussion is logged for qualitative analysis.
-
-This means reported accuracy reflects only cases where the two agents reached consensus.
-
----
-
 ## Control Strategy
 
 A single frozen control model (`deepseek-v4-flash` by default, set via `CONTROL_MODEL` in `run_trial.py`) is maintained across all epochs. Treatment versions change sequentially. Each treatment version is evaluated against concurrent control cases from the same time window — not against a version-specific control pool.
@@ -59,7 +44,7 @@ case arrives → version_manager marks active epoch
              → randomizer assigns control / treatment
              → control arm → frozen CONTROL_MODEL
                treatment arm → active --doctor_llm
-             → AgentClinic runs the dialogue (two-doctor workflow)
+             → AgentClinic runs the dialogue
              → logger appends result to trial_log.jsonl
              → repeat
 ```
@@ -218,7 +203,7 @@ Each call appends to `trial_log.jsonl`. Every record is tagged with `version_id`
 
 | File | Role |
 |---|---|
-| `AgentClinic/agentclinic.py` | Core simulation engine: DoctorAgent, ReviewerAgent, PatientAgent, MeasurementAgent, ScenarioLoaders, two-doctor workflow |
+| `AgentClinic/agentclinic.py` | Core simulation engine: DoctorAgent, PatientAgent, MeasurementAgent, ScenarioLoaders |
 | `AgentClinic/agentclinic_medqa.jsonl` | MedQA scenarios |
 | `AgentClinic/agentclinic_medqa_extended.jsonl` | Extended MedQA scenarios |
 | `AgentClinic/agentclinic_nejm.jsonl` | NEJM scenarios |

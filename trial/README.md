@@ -28,4 +28,4 @@ python trial/run_trial.py    --new_version --version_id v1 ...
 ## Notes
 - Refactor: the five files moved into the `trial/` package; imports switched to absolute (`from trial.X import ...`); `current_version.json` path pinned to this directory.
 - Outputs (`trial_log.jsonl`) will move to `results/trial/` later (see `REFACTOR_PLAN.md`).
-- Known debt: `run_case` does not yet wire in the ReviewerAgent (the "two-doctor workflow" in the top-level README); `randomization._block` is not persisted across processes.
+- Known debt: `randomization._block` is not persisted across processes.

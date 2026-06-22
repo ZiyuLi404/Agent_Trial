@@ -196,5 +196,4 @@ results/**/*.pdf
 ## 6. 已知技术债（重构时一并处理）
 
 - **`anchor_compare` 是引擎的整段复制分支**（~600 行），且其 `query_model` 停留在旧版（`temperature=0`、`max_tokens=200`，易截断结构化输出）。理想改法：改成 `from AgentClinic.agentclinic import ...`，仅以薄子类保留 `output_format="anchor_compare"` 的结构化输出差异。**当前用户决定先不动。**
-- `trial_manager.run_case` 未接 ReviewerAgent（README 描述的"两医生工作流"与实现不一致）。
 - `randomization._block` 不跨进程持久化。
