@@ -7,14 +7,15 @@ This is the **upstream producer**: the `case_X.json` files it writes are the inp
 ## It's really a general runner (two axes)
 `diagnosis_distribution.py` can sweep over `model × prompt-style`:
 - Fix the prompt, look at output stability → the "diagnosis distribution" experiment.
-- Vary `--doctor_prompt_style`, look at how diagnoses shift → the **prompt experiment** (prompt bank lives in `AgentClinic/doctor_prompts.json`, 7 styles).
+- Vary `--doctor_prompt_style`, look at how diagnoses shift → the **prompt experiment** (prompt bank lives in `AgentClinic/doctor_prompts.json`, 5 styles, all free-text output: `default` + 4 diagnostic-style ablations that differ from `default` by a single inserted sentence).
 
 ## Files
 | File | Purpose |
 |------|---------|
 | `diagnosis_distribution.py` | Main runner. Reuses the engine (`import AgentClinic.agentclinic`), no copy |
 | `make_dist_report.py` | Renders results into a plain-text report |
-| `run_gpt_data.sh` | Batch helper: runs per case, assembles `<group>/case_X.json` folders |
+| `run_distribution.sh` | General batch runner: one process per (model × style × case), throttled concurrency, isolated out dirs, assembles a clean `assembled/<model>/<style>/temp_<T>/case_<id>.json` tree |
+| `run_gpt_data.sh` | Legacy GPT-only batch helper (superseded by `run_distribution.sh`) |
 
 ## Output
 Each `case_X.json` has `scenario_id`, `runs`, `distribution` (per-bucket counts), `samples` (each run's `diagnosis_text` + `full_dialogue`), `entropy_bits`, etc.
@@ -32,4 +33,4 @@ python generate_diagnosis_distribution/diagnosis_distribution.py --doctor_llm de
 - ✅ Moved into this module; the bootstrap now adds the **repo root** to `sys.path` (so `import AgentClinic` works from a subdir).
 - ✅ `make_dist_report.py` reclaimed from the archive; its `RESULTS_DIR` points at the repo-root `results/`.
 - Target data location: `results/generate_diagnosis_distribution/<model>/case_X.json` (this replaces the hand-zipped `Data*.zip`).
-- ⚠️ The trailing `zip -r Data_gpt.zip` step in `run_gpt_data.sh` is **obsolete** now that zips are retired — drop that step; keep the orchestration.
+- ✅ `run_distribution.sh` is the current general runner (configurable models/cases/styles, capped concurrency, no zip step). `run_gpt_data.sh` is the legacy GPT-only script kept for reference.

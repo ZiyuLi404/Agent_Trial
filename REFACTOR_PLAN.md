@@ -64,7 +64,7 @@ Agent_Trial/
 ├── AgentClinic/                 ① 引擎
 │   ├── README.md
 │   ├── agentclinic.py
-│   ├── doctor_prompts.json      #   prompt 库（7 人设）
+│   ├── doctor_prompts.json      #   prompt 库（5 人设，全部自由文本输出）
 │   ├── agentclinic_medqa.jsonl  #   数据集 ×4
 │   ├── agentclinic_*.jsonl
 │   ├── icd10cm_2026.jsonl       #   ★ ICD 字典唯一来源（引擎 + I 共用）

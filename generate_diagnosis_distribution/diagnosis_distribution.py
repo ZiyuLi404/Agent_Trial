@@ -545,7 +545,7 @@ def main():
     parser.add_argument("--doctor_prompt_json", type=str, default="doctor_prompts.json",
                         help="Path to JSON file containing doctor prompt templates")
     parser.add_argument("--doctor_prompt_style", type=str, default="default",
-                        help="Prompt style(s), comma-separated or 'all', e.g. 'default' / 'default, icd10cm' / 'all'")
+                        help="Prompt style(s), comma-separated or 'all', e.g. 'default' / 'default, conservative_safety_first' / 'all'")
     # ICD-10-CM validation
     parser.add_argument("--icd10cm_jsonl", type=str, default="icd10cm_2026.jsonl",
                         help="Path to ICD-10-CM JSONL code dictionary. Relative paths resolved relative to agentclinic.py.")

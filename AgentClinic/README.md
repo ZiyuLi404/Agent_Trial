@@ -8,7 +8,7 @@ Derived from upstream [AgentClinic](https://github.com/SamuelSchmidgall/AgentCli
 | File | Purpose |
 |------|---------|
 | `agentclinic.py` | Core engine: the agents, `ScenarioLoader*`, `query_model`, `compare_results`, etc. |
-| `doctor_prompts.json` | Doctor prompt bank (7 styles) — the material for the prompt experiment |
+| `doctor_prompts.json` | Doctor prompt bank (5 styles, all free-text output) — the material for the prompt experiment |
 | `agentclinic_*.jsonl` (×4) | MedQA / NEJM case datasets (+ extended) |
 | `icd10cm_2026.jsonl`, `icd10cm_codes/` | **The single source** of the ICD-10-CM dictionary (shared by the engine and by `kl_js_divergence`) |
 
