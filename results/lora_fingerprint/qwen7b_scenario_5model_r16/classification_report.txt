@@ -1,0 +1,11 @@
+                 precision    recall  f1-score   support
+
+Qwen_plus_turbo     0.7778    0.7000    0.7368        60
+ deepseek_flash     0.7414    0.7167    0.7288        60
+   deepseek_pro     0.6111    0.7333    0.6667        60
+   gpt_5_4_mini     0.8710    0.9000    0.8852        60
+        gpt_5_5     0.8333    0.7500    0.7895        60
+
+       accuracy                         0.7600       300
+      macro avg     0.7669    0.7600    0.7614       300
+   weighted avg     0.7669    0.7600    0.7614       300
