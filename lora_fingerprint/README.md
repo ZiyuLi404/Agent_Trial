@@ -35,6 +35,30 @@ python lora_fingerprint/fingerprint_detector.py \
 # output defaults to results/lora_fingerprint/<text_field>/
 ```
 
+## Scaling up to Qwen2.5-7B + LoRA (cloud GPU)
+
+The same script drives a decoder-LM backbone (Qwen2.5 / Llama), matching the FDLLM paper. It is **not** for the 16GB Mac — run it on a CUDA GPU (Colab / A100 / lab box). The script auto-handles the decoder-LM bits (pad token, `q_proj,v_proj` LoRA targets, 4-bit QLoRA, gradient checkpointing).
+
+```bash
+# on the GPU box, from repo root:
+pip install -r lora_fingerprint/requirements.txt   # adds peft / accelerate / bitsandbytes
+bash lora_fingerprint/run_qwen_cloud.sh            # Qwen2.5-7B + QLoRA, scenario split
+```
+
+Equivalent explicit call:
+```bash
+python lora_fingerprint/fingerprint_detector.py \
+  --model_name Qwen/Qwen2.5-7B --allow_remote_model_files \
+  --text_field full_dialogue --split_mode scenario \
+  --use_lora --load_in_4bit --gradient_checkpointing --dtype bfloat16 \
+  --lora_r 256 --lora_alpha 128 --learning_rate 1e-4 --epochs 3 \
+  --batch_size 2 --max_length 1024 \
+  --output_dir results/lora_fingerprint/qwen7b_scenario
+```
+`--load_in_4bit` (QLoRA, needs `bitsandbytes` + CUDA) fits 7B on a single 16GB card; drop it on 24GB+ and raise `--batch_size` / `--max_length`. `--dtype bfloat16` is the right choice for Qwen/Llama LoRA on a GPU.
+
+> ⚠️ Expectation: on the **current** 5-model, fixed-prompt, temp-0.05 data the task is already saturated (TF-IDF bag-of-words ≈ DistilBERT ≈ LoRA ≈ 0.91), so a 7B backbone is unlikely to beat ~0.91 here. Qwen earns its keep when the task gets harder — more model classes, Chinese/multilingual, higher temperature, or adversarial paraphrase/translation (the regime FDLLM targets).
+
 ## Output (under `results/lora_fingerprint/<text_field>/`)
 - `metrics.json` — accuracy / macro-F1 + run config
 - `classification_report.txt`, `confusion_matrix.csv` — per-model breakdown

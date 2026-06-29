@@ -4,3 +4,6 @@ scikit-learn
 numpy
 # optional — only needed when running with --use_lora
 peft
+# cloud / large-backbone (Qwen2.5-7B) extras — only needed for run_qwen_cloud.sh
+accelerate
+bitsandbytes   # for --load_in_4bit (QLoRA); CUDA only

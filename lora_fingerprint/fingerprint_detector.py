@@ -243,32 +243,101 @@ class TokenizedDataset(Dataset):
 # --------------------------------------------------------------------------- #
 # Model / training
 # --------------------------------------------------------------------------- #
+# LoRA target modules per backbone family. "auto" picks from model_type;
+# distilbert isn't in peft's built-in mapping so it must be named explicitly.
+LORA_TARGETS_BY_TYPE = {
+    "distilbert": ["q_lin", "v_lin"],
+    "bert": ["query", "value"],
+    "qwen2": ["q_proj", "v_proj"],          # Qwen2 / Qwen2.5
+    "qwen3": ["q_proj", "v_proj"],
+    "llama": ["q_proj", "v_proj"],
+    "mistral": ["q_proj", "v_proj"],
+}
+
+
+def resolve_lora_targets(model: Any, spec: str) -> list[str] | None:
+    if spec and spec != "auto":
+        return [m.strip() for m in spec.split(",") if m.strip()]
+    model_type = getattr(model.config, "model_type", "")
+    return LORA_TARGETS_BY_TYPE.get(model_type)  # None -> let peft auto-resolve
+
+
 def maybe_apply_lora(model: Any, args: argparse.Namespace) -> Any:
     if not args.use_lora:
         return model
     try:
-        from peft import LoraConfig, TaskType, get_peft_model
+        from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
     except ImportError as exc:  # noqa: BLE001
         raise RuntimeError(
             "You passed --use_lora but `peft` is not installed. "
             "Run `pip install peft`, or drop --use_lora to fine-tune the full model."
         ) from exc
-    target_modules = (
-        [m.strip() for m in args.lora_target_modules.split(",") if m.strip()]
-        if args.lora_target_modules
-        else None  # let peft auto-resolve (works for models in its built-in mapping)
-    )
+
+    # QLoRA: stabilise a 4-bit base before attaching adapters.
+    if getattr(args, "load_in_4bit", False):
+        model = prepare_model_for_kbit_training(
+            model, use_gradient_checkpointing=args.gradient_checkpointing
+        )
+
     config = LoraConfig(
         task_type=TaskType.SEQ_CLS,
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
         bias="none",
-        target_modules=target_modules,
+        target_modules=resolve_lora_targets(model, args.lora_target_modules),
     )
     model = get_peft_model(model, config)
     model.print_trainable_parameters()
     return model
+
+
+def load_backbone(args: argparse.Namespace, label2id: dict, id2label: dict, local_files_only: bool):
+    """Load tokenizer + sequence-classification model.
+
+    Works for encoders (DistilBERT/BERT) and decoder-only LMs (Qwen2.5/Llama):
+    a decoder LM needs a pad token and config.pad_token_id so the classifier
+    can locate the last real token. Supports fp16/bf16 and 4-bit (QLoRA).
+    """
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name, local_files_only=local_files_only)
+    if tokenizer.pad_token is None:  # most causal LMs (Qwen/Llama) ship without one
+        tokenizer.pad_token = tokenizer.eos_token
+
+    dtype = {"auto": "auto", "float16": torch.float16,
+             "bfloat16": torch.bfloat16, "float32": torch.float32}[args.dtype]
+
+    load_kwargs: dict[str, Any] = dict(
+        num_labels=len(label2id),
+        label2id=label2id,
+        id2label=id2label,
+        local_files_only=local_files_only,
+    )
+    if dtype != "auto":
+        load_kwargs["torch_dtype"] = dtype
+
+    if args.load_in_4bit:
+        if not torch.cuda.is_available():
+            raise RuntimeError("--load_in_4bit (QLoRA) needs a CUDA GPU + bitsandbytes; not available here.")
+        from transformers import BitsAndBytesConfig
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        load_kwargs["device_map"] = "auto"
+
+    model = AutoModelForSequenceClassification.from_pretrained(args.model_name, **load_kwargs)
+    if model.config.pad_token_id is None:
+        model.config.pad_token_id = tokenizer.pad_token_id
+    if args.gradient_checkpointing and not args.load_in_4bit:
+        model.gradient_checkpointing_enable()
+    return tokenizer, model
+
+
+def _is_dispatched(model: Any) -> bool:
+    """True if accelerate already placed the model (device_map / 4-bit)."""
+    return getattr(model, "hf_device_map", None) is not None or getattr(model, "is_loaded_in_4bit", False)
 
 
 def choose_device() -> torch.device:
@@ -316,7 +385,9 @@ def train_model(model, train_loader, test_loader, args, device):
     global_step = 0
     whole_epochs = int(args.epochs)
 
-    model.to(device)
+    # A 4-bit / device_map model is already placed by accelerate — don't move it.
+    if not _is_dispatched(model):
+        model.to(device)
     for epoch in range(whole_epochs):
         model.train()
         epoch_losses: list[float] = []
@@ -380,9 +451,15 @@ def main() -> None:
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=16)
     parser.add_argument("--lora_dropout", type=float, default=0.05)
-    parser.add_argument("--lora_target_modules", default="q_lin,v_lin",
-                        help="comma-separated module names LoRA adapts (distilbert: q_lin,v_lin). "
-                             "Empty string -> let peft auto-resolve.")
+    parser.add_argument("--lora_target_modules", default="auto",
+                        help="comma-separated module names LoRA adapts. 'auto' picks per backbone "
+                             "(distilbert->q_lin,v_lin ; qwen2/llama->q_proj,v_proj).")
+    parser.add_argument("--dtype", choices=["auto", "float16", "bfloat16", "float32"], default="auto",
+                        help="model dtype. Use bfloat16 for Qwen/Llama LoRA on a GPU.")
+    parser.add_argument("--load_in_4bit", action="store_true",
+                        help="QLoRA: load base in 4-bit (needs CUDA + bitsandbytes). Pairs with --use_lora.")
+    parser.add_argument("--gradient_checkpointing", action="store_true",
+                        help="trade compute for memory; recommended for 7B on a single GPU.")
     parser.add_argument("--prepare_only", action="store_true", help="only export the data split, don't train")
     args = parser.parse_args()
 
@@ -413,14 +490,7 @@ def main() -> None:
         return
 
     local_files_only = not args.allow_remote_model_files
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name, local_files_only=local_files_only)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        args.model_name,
-        num_labels=len(label2id),
-        label2id=label2id,
-        id2label=id2label,
-        local_files_only=local_files_only,
-    )
+    tokenizer, model = load_backbone(args, label2id, id2label, local_files_only)
     model = maybe_apply_lora(model, args)
 
     train_ds = TokenizedDataset(train_examples, label2id, tokenizer, args.max_length)
