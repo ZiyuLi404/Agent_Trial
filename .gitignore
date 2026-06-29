@@ -22,6 +22,10 @@ results/**/*.pdf
 results/**/*.log
 results/**/logs/
 results/**/transcripts/
+# 训练好的模型权重（可再训练，体积大）→ 忽略
+results/**/*.safetensors
+results/**/*.bin
+results/**/best_model/
 # 小而宝贵的最终结论（相似度矩阵 / 散度 / summary 等 .csv/.txt）默认入库，不在此忽略。
 
 # ── 归档的可再生产物（png/pptx/zip 等，留盘不入库）──

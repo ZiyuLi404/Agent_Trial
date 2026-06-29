@@ -1,0 +1,6 @@
+torch
+transformers
+scikit-learn
+numpy
+# optional — only needed when running with --use_lora
+peft

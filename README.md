@@ -20,6 +20,7 @@ The code is split into modules, **each with its own `README.md`**. The full blue
 | [`embedding_similarity/`](embedding_similarity/README.md) | Drift · Method B (vectors + similarity) |
 | [`kl_js_divergence/`](kl_js_divergence/README.md) | Drift · Method A (distributions + divergence) |
 | [`history_borrowing/`](history_borrowing/README.md) | History borrowing / performance estimation |
+| [`lora_fingerprint/`](lora_fingerprint/README.md) | Model/version fingerprint detection (DistilBERT, optional LoRA) |
 
 > ⚠️ **Commands moved**: scripts now live inside module dirs — run them from the **repo root**, e.g. `python trial/run_trial.py ...` (or `python -m trial.run_trial ...`).
 
