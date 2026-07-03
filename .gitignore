@@ -34,3 +34,8 @@ generated_outputs/
 # ── 顶层运行日志（旧位置，逐步迁入 results/）──
 trial_log.jsonl
 deployment_log.jsonl
+
+*.csv
+*.json
+*.claude
+*.sh
