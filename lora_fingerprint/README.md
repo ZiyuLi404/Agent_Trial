@@ -81,3 +81,70 @@ So this is *FDLLM's idea* (LoRA-style fingerprint classification), re-scoped to 
 ## Notes
 - DistilBERT is English-only and truncates at `--max_length` (512) tokens; long Chinese dialogues should switch `--model_name` to a multilingual/long-context encoder.
 - With only `_1`/`_2` per model, `--split_mode batch` gives a small but honest held-out test; treat absolute numbers as indicative.
+
+## Pairwise comparisons across many model versions
+
+`fingerprint_detector.py` trains one classifier over *all* labels found under `--data_dir` (an N-way problem). For "how separable is version A from version B specifically" — e.g. comparing 5 model versions two at a time — use the two files below instead. Neither duplicates the training loop; they import the reusable pieces (`load_examples`, `split_examples`, `load_backbone`, `train_model`, …) straight from `fingerprint_detector.py`.
+
+- **`pairwise_fingerprint.py`** — trains one binary `version_a` vs `version_b` classifier and writes `metadata.json` / `pairwise_outputs.jsonl` (per-dialogue logits, probabilities, confidence, margin, entropy) / `summary_metrics.json` (accuracy, macro-F1, AUROC, …) under `<output_dir>/<version_a>__vs__<version_b>/`.
+- **`analyze_pairwise_fingerprint.py`** — runs `pairwise_fingerprint.run_pairwise_fingerprint` over every pair among a set of versions (or an explicit list of pairs) and aggregates the results into analysis-wide CSVs.
+
+### Run all pairwise comparisons for 5 model versions
+
+```bash
+python lora_fingerprint/analyze_pairwise_fingerprint.py \
+  --data_dir results/generate_diagnosis_distribution \
+  --output_dir results/lora_fingerprint_pairwise \
+  --analysis_dir results/lora_fingerprint_pairwise_analysis \
+  --versions deepseek_flash,deepseek_pro,gpt_5_4_mini,gpt_5_5,qwen_plus \
+  --text_field full_dialogue --split_mode scenario \
+  --skip_existing
+```
+
+5 versions → `itertools.combinations` → all 10 unordered pairs (`deepseek_flash vs deepseek_pro`, `deepseek_flash vs gpt_5_4_mini`, … `gpt_5_5 vs qwen_plus`). `--skip_existing` avoids retraining a pair whose 3 output files are already on disk (fast — no model load); `--overwrite` forces a fresh run of every pair regardless.
+
+To run only specific pairs instead of the full combinatorial set:
+```bash
+python lora_fingerprint/analyze_pairwise_fingerprint.py \
+  --data_dir results/generate_diagnosis_distribution \
+  --output_dir results/lora_fingerprint_pairwise \
+  --analysis_dir results/lora_fingerprint_pairwise_analysis \
+  --pairs deepseek_flash:deepseek_pro,gpt_5_4_mini:gpt_5_5 \
+  --text_field full_dialogue --split_mode scenario
+```
+
+To also compute per-dialogue "borrowing" features relative to one target version (e.g. how distinguishable each other version is from `gpt_5_5`, at several exponential-decay strengths):
+```bash
+python lora_fingerprint/analyze_pairwise_fingerprint.py \
+  --data_dir results/generate_diagnosis_distribution \
+  --output_dir results/lora_fingerprint_pairwise \
+  --analysis_dir results/lora_fingerprint_pairwise_analysis_gpt55 \
+  --versions deepseek_flash,deepseek_pro,gpt_5_4_mini,gpt_5_5,qwen_plus \
+  --target_version gpt_5_5 --lambda_values 1,5,10,50,100 \
+  --text_field full_dialogue --split_mode scenario
+```
+
+All training pass-through flags from `fingerprint_detector.py` (`--model_name`, `--use_lora`, `--load_in_4bit`, `--max_length`, `--epochs`, `--batch_size`, `--learning_rate`, `--weight_decay`, `--warmup_ratio`, `--seed`) are supported. One failing pair is logged and skipped, not fatal — pass `--fail_fast` to stop the whole run on the first failure instead. A completed/skipped/failed summary prints at the end.
+
+### Outputs
+
+Per pair, under `<output_dir>/<version_a>__vs__<version_b>/`:
+- `metadata.json` — split spec, model/training config, label map (setup only, no scores)
+- `pairwise_outputs.jsonl` — one row per dialogue (train + test) with logits, `p_a`/`p_b`, confidence, margin, entropy, diagnosis text
+- `summary_metrics.json` — accuracy / macro-F1 / balanced accuracy / AUROC, overall + by split + by true version + by case
+
+Aggregated across all pairs, under `<analysis_dir>/`:
+- `all_pair_summary.csv` / `.json` — one row per pair
+- `all_dialog_features.csv` — every pair's `pairwise_outputs.jsonl` rows concatenated
+- `borrowing_features.csv` — raw candidate features (`fingerprint_distance_prob`, `exp_weight_prob_lambda_<L>`, …) for a downstream borrowing-weight decision — this script does not pick a final weight, it only produces the inputs
+- `analysis_metadata.json` — which pairs were requested/completed/skipped/failed
+
+### Run just one pair (skip the multi-pair runner)
+
+```bash
+python lora_fingerprint/pairwise_fingerprint.py \
+  --data_dir results/generate_diagnosis_distribution \
+  --version_a deepseek_flash --version_b deepseek_pro \
+  --output_dir results/lora_fingerprint_pairwise \
+  --text_field full_dialogue --split_mode scenario
+```

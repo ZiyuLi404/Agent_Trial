@@ -79,6 +79,25 @@ def discover_versions(data_dir: Path) -> list[str]:
     return sorted({family_from_dir(p.name) for p in data_dir.iterdir() if p.is_dir()})
 
 
+def build_same_version_pairs(data_dir: Path) -> list[tuple[str, str]]:
+    """All batch-vs-batch pairs within each version family, e.g. deepseek_flash_1
+    vs deepseek_flash_2 (and _1 vs _3, _2 vs _3 if a third batch exists).
+    Useful as a same-model consistency check, distinct from cross-version pairs.
+    """
+    if not data_dir.exists():
+        return []
+    folders = sorted(p.name for p in data_dir.iterdir() if p.is_dir())
+    by_family: dict[str, list[str]] = {}
+    for folder in folders:
+        by_family.setdefault(family_from_dir(folder), []).append(folder)
+
+    pairs: list[tuple[str, str]] = []
+    for _family, batch_folders in sorted(by_family.items()):
+        if len(batch_folders) >= 2:
+            pairs.extend(itertools.combinations(sorted(batch_folders), 2))
+    return pairs
+
+
 def build_pairs(versions: list[str] | None, pairs_arg: str | None, data_dir: Path) -> list[tuple[str, str]]:
     discovered = discover_versions(data_dir)
 
@@ -156,6 +175,7 @@ def run_all_pairs(
                 output_dir=args.output_dir,
                 text_field=args.text_field,
                 split_mode=args.split_mode,
+                test_size=args.test_size,
                 model_name=args.model_name,
                 use_lora=args.use_lora,
                 load_in_4bit=args.load_in_4bit,
@@ -167,6 +187,7 @@ def run_all_pairs(
                 warmup_ratio=args.warmup_ratio,
                 seed=args.seed,
                 overwrite=args.overwrite,
+                allow_remote_model_files=args.allow_remote_model_files,
             )
             completed.append(result)
         except Exception as exc:  # noqa: BLE001
@@ -343,8 +364,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--analysis_dir", required=True, help="aggregated analysis files are written here")
     parser.add_argument("--versions", default=None, help="comma-separated version names")
     parser.add_argument("--pairs", default=None, help="comma-separated explicit pairs, e.g. A:B,C:D")
+    parser.add_argument("--include_same_version_batches", action="store_true",
+                         help="also run batch-vs-batch pairs within each version, "
+                              "e.g. deepseek_flash_1 vs deepseek_flash_2")
     parser.add_argument("--text_field", choices=TEXT_FIELD_CHOICES, default="full_dialogue")
-    parser.add_argument("--split_mode", choices=["batch", "random", "scenario"], default="scenario")
+    parser.add_argument("--split_mode", choices=["batch", "random", "scenario", "run"], default="scenario")
+    parser.add_argument("--test_size", type=float, default=0.3,
+                         help="fraction held out for split_mode scenario/random/run")
     parser.add_argument("--skip_existing", action="store_true", help="skip a pair if its outputs already exist")
     parser.add_argument("--overwrite", action="store_true", help="rerun and overwrite existing pair outputs")
     parser.add_argument("--fail_fast", action="store_true", help="stop immediately if a pair fails")
@@ -352,6 +378,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lambda_values", default="1,5,10,50,100")
     # pass-through training args (see pairwise_fingerprint.run_pairwise_fingerprint)
     parser.add_argument("--model_name", default="distilbert-base-uncased")
+    parser.add_argument("--allow_remote_model_files", action="store_true",
+                         help="allow downloading the backbone from Hugging Face if not cached locally")
     parser.add_argument("--use_lora", action="store_true")
     parser.add_argument("--load_in_4bit", action="store_true")
     parser.add_argument("--max_length", type=int, default=512)
@@ -371,6 +399,11 @@ def main() -> None:
 
     versions = [v.strip() for v in args.versions.split(",") if v.strip()] if args.versions else None
     pairs = build_pairs(versions, args.pairs, data_dir)
+
+    if args.include_same_version_batches:
+        same_version_pairs = build_same_version_pairs(data_dir)
+        print(f"[info] --include_same_version_batches: adding {len(same_version_pairs)} same-version batch pair(s)")
+        pairs = pairs + same_version_pairs
 
     print(f"Running {len(pairs)} pairwise comparison(s):")
     for a, b in pairs:
@@ -398,6 +431,7 @@ def main() -> None:
         "analysis_dir": str(analysis_dir),
         "text_field": args.text_field,
         "split_mode": args.split_mode,
+        "test_size": args.test_size,
         "model_name": args.model_name,
         "use_lora": args.use_lora,
         "load_in_4bit": args.load_in_4bit,

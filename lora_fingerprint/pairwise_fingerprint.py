@@ -33,6 +33,7 @@ import argparse
 import json
 import math
 import sys
+from dataclasses import replace as _replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -111,6 +112,26 @@ def _resolve_split(
             "test_cases": sorted(set(test_cases)) if isinstance(test_cases, list) else (test_cases or []),
             "train_runs": train_runs if train_runs is not None else "all",
             "test_runs": test_runs if test_runs is not None else "all",
+        }
+        return train, test, info
+
+    if split_mode == "run":
+        # Hold out the last `test_size` fraction of run indices (e.g. runs 7-9
+        # of 0-9 with test_size=0.3), applied uniformly across every case —
+        # tests generalization to unseen repeat-runs rather than unseen cases.
+        distinct_runs = sorted({e.run for e in examples if e.run is not None})
+        if not distinct_runs:
+            raise ValueError("split_mode=run needs examples with a 'run' field.")
+        n_test_runs = max(1, int(round(len(distinct_runs) * test_size)))
+        test_run_set = set(distinct_runs[len(distinct_runs) - n_test_runs:])
+        train = [e for e in examples if e.run not in test_run_set]
+        test = [e for e in examples if e.run in test_run_set]
+        info = {
+            "split_unit": "run",
+            "train_cases": sorted({e.scenario for e in train if e.scenario is not None}),
+            "test_cases": sorted({e.scenario for e in test if e.scenario is not None}),
+            "train_runs": sorted(set(distinct_runs) - test_run_set),
+            "test_runs": sorted(test_run_set),
         }
         return train, test, info
 
@@ -343,7 +364,19 @@ def run_pairwise_fingerprint(
     set_seed(seed)
 
     all_examples = load_examples(data_dir, text_field=text_field)
-    examples = [e for e in all_examples if family_from_dir(e.source_dir) in (version_a, version_b)]
+
+    # version_a/version_b normally name a *family* (e.g. "deepseek_flash",
+    # spanning its _1/_2/_3 batch folders). If both instead name exact batch
+    # folders (e.g. "deepseek_flash_1" vs "deepseek_flash_2"), compare those
+    # two folders directly — useful as a same-model batch-consistency check.
+    available_folders = {p.name for p in data_dir.iterdir() if p.is_dir()}
+    folder_level = version_a in available_folders and version_b in available_folders
+
+    if folder_level:
+        examples = [e for e in all_examples if e.source_dir in (version_a, version_b)]
+        examples = [_replace(e, label_name=e.source_dir) for e in examples]
+    else:
+        examples = [e for e in all_examples if family_from_dir(e.source_dir) in (version_a, version_b)]
     if not examples:
         raise ValueError(f"No examples for versions {version_a!r}/{version_b!r} under {data_dir}")
 
@@ -413,6 +446,7 @@ def run_pairwise_fingerprint(
         "version_a": version_a,
         "version_b": version_b,
         "task_type": "pairwise_fingerprint_classification",
+        "label_unit": "folder" if folder_level else "family",
         "text_field": text_field,
         "split_spec": {
             "split_mode": split_mode,
@@ -476,7 +510,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version_b", required=True)
     parser.add_argument("--output_dir", required=True)
     parser.add_argument("--text_field", choices=TEXT_FIELD_CHOICES, default="full_dialogue")
-    parser.add_argument("--split_mode", choices=["batch", "random", "scenario"], default="scenario")
+    parser.add_argument("--split_mode", choices=["batch", "random", "scenario", "run"], default="scenario")
     parser.add_argument("--test_size", type=float, default=0.3)
     parser.add_argument("--model_name", default="distilbert-base-uncased")
     parser.add_argument("--allow_remote_model_files", action="store_true")
