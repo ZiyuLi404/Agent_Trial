@@ -43,7 +43,7 @@ if __package__ in (None, ""):  # allow `python lora_fingerprint/analyze_pairwise
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lora_fingerprint.fingerprint_detector import TEXT_FIELD_CHOICES, family_from_dir
-from lora_fingerprint.pairwise_fingerprint import run_pairwise_fingerprint
+from lora_fingerprint.pairwise_fingerprint import parse_int_list, run_pairwise_fingerprint
 
 ALL_PAIR_SUMMARY_COLUMNS = [
     "comparison_id", "version_a", "version_b", "n_train", "n_test",
@@ -186,6 +186,8 @@ def run_all_pairs(
                 weight_decay=args.weight_decay,
                 warmup_ratio=args.warmup_ratio,
                 seed=args.seed,
+                train_runs=parse_int_list(args.train_runs),
+                test_runs=parse_int_list(args.test_runs),
                 overwrite=args.overwrite,
                 allow_remote_model_files=args.allow_remote_model_files,
             )
@@ -371,6 +373,10 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--split_mode", choices=["batch", "random", "scenario", "run"], default="scenario")
     parser.add_argument("--test_size", type=float, default=0.3,
                          help="fraction held out for split_mode scenario/random/run")
+    parser.add_argument("--train_runs", default=None,
+                         help="manual split_mode=run override: comma-separated run ids, or 'all'")
+    parser.add_argument("--test_runs", default=None,
+                         help="manual split_mode=run override: comma-separated run ids, or 'all'")
     parser.add_argument("--skip_existing", action="store_true", help="skip a pair if its outputs already exist")
     parser.add_argument("--overwrite", action="store_true", help="rerun and overwrite existing pair outputs")
     parser.add_argument("--fail_fast", action="store_true", help="stop immediately if a pair fails")

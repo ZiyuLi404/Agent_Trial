@@ -32,7 +32,9 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 import sys
+from collections import defaultdict
 from dataclasses import replace as _replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -69,6 +71,90 @@ METRIC_KEYS = [
 # --------------------------------------------------------------------------- #
 # Split resolution
 # --------------------------------------------------------------------------- #
+RUN_SPLIT_MODES = {"run", "runs", "run_level"}
+
+
+def parse_int_list(x: list[int] | str | None) -> list[int] | None:
+    """Normalize a run/case-id spec: None/""/"all" -> None (no filter); a
+    comma string -> list[int]; an already-parsed list passes through."""
+    if x is None:
+        return None
+    if isinstance(x, str):
+        if x.strip() == "" or x.strip().lower() == "all":
+            return None
+        return [int(v.strip()) for v in x.split(",") if v.strip() != ""]
+    return list(x)
+
+
+def _sample_id_of(e: Example) -> str:
+    case_id = e.scenario if e.scenario is not None else -1
+    run_id = -1 if e.run is None else int(e.run)
+    return f"{e.label_name}_case{case_id}_run{run_id}"
+
+
+def _split_examples_by_run_ids(
+    examples: list[Example], train_runs: list[int], test_runs: list[int]
+) -> tuple[list[Example], list[Example]]:
+    """Manual global run-id split: every case/version uses the same run-id sets."""
+    train_run_set = set(train_runs)
+    test_run_set = set(test_runs)
+    overlap = train_run_set & test_run_set
+    if overlap:
+        raise ValueError(f"train_runs and test_runs overlap: {sorted(overlap)}")
+
+    train = [e for e in examples if e.run in train_run_set]
+    test = [e for e in examples if e.run in test_run_set]
+    return train, test
+
+
+def _split_examples_by_run_fraction(
+    examples: list[Example], test_size: float, seed: int
+) -> tuple[list[Example], list[Example], dict[str, dict[str, list[int]]]]:
+    """Per (case, version) independent random run split: for every case and
+    every version separately, shuffle that group's runs and hold out the last
+    `test_size` fraction as test. Guarantees every case appears in both train
+    and test for every version present (as long as it has >=2 distinct runs).
+    """
+    if not (0 < test_size < 1):
+        raise ValueError(f"test_size must be between 0 and 1, got {test_size}")
+
+    groups: dict[tuple[int | None, str], list[Example]] = defaultdict(list)
+    for e in examples:
+        groups[(e.scenario, e.label_name)].append(e)
+
+    rng = random.Random(seed)
+    train: list[Example] = []
+    test: list[Example] = []
+    split_assignment: dict[str, dict[str, list[int]]] = {}
+
+    for (case_id, label_name) in sorted(groups.keys(), key=lambda k: (k[0] if k[0] is not None else -1, k[1])):
+        group = groups[(case_id, label_name)]
+        runs = sorted({e.run for e in group if e.run is not None})
+        shuffled_runs = runs[:]
+        rng.shuffle(shuffled_runs)
+
+        n_runs = len(shuffled_runs)
+        n_test = max(1, int(round(n_runs * test_size)))
+        if n_test >= n_runs:
+            n_test = n_runs - 1
+
+        test_run_set = set(shuffled_runs[:n_test])
+        train_run_set = set(shuffled_runs[n_test:])
+
+        split_assignment[f"case_{case_id}_label_{label_name}"] = {
+            "train_runs": sorted(train_run_set),
+            "test_runs": sorted(test_run_set),
+        }
+
+        for e in group:
+            if e.run in test_run_set:
+                test.append(e)
+            elif e.run in train_run_set:
+                train.append(e)
+
+    return train, test, split_assignment
+
+
 def _resolve_split(
     examples: list[Example],
     split_mode: str,
@@ -82,10 +168,13 @@ def _resolve_split(
 ) -> tuple[list[Example], list[Example], dict[str, Any]]:
     """Decide train/test examples.
 
-    Default path reuses fingerprint_detector.split_examples verbatim (batch /
-    random / scenario). An explicit override (train_cases/test_cases/
-    train_runs/test_runs, optionally loaded from split_file) lets callers
-    pin an exact, reproducible split instead of the automatic modes.
+    Priority:
+      1. split_mode="run" (or "runs"/"run_level") + explicit train_runs/test_runs
+         -> manual global run-id split.
+      2. split_mode="run" + test_size -> per (case, version) random run-fraction split.
+      3. Otherwise: existing case-level behavior — an explicit train_cases/test_cases/
+         train_runs/test_runs override (optionally from split_file), else
+         fingerprint_detector.split_examples (batch/random/scenario), unchanged.
     """
     if split_file:
         spec = json.loads(Path(split_file).read_text(encoding="utf-8"))
@@ -93,6 +182,35 @@ def _resolve_split(
         test_cases = spec.get("test_cases", test_cases)
         train_runs = spec.get("train_runs", train_runs)
         test_runs = spec.get("test_runs", test_runs)
+
+    if split_mode in RUN_SPLIT_MODES:
+        parsed_train_runs = parse_int_list(train_runs)
+        parsed_test_runs = parse_int_list(test_runs)
+
+        if parsed_train_runs is not None and parsed_test_runs is not None:
+            train, test = _split_examples_by_run_ids(examples, parsed_train_runs, parsed_test_runs)
+            info = {
+                "split_unit": "run_manual",
+                "train_cases": sorted({e.scenario for e in train if e.scenario is not None}),
+                "test_cases": sorted({e.scenario for e in test if e.scenario is not None}),
+                "train_runs": sorted(set(parsed_train_runs)),
+                "test_runs": sorted(set(parsed_test_runs)),
+                "test_size": None,
+                "split_assignment": None,
+            }
+            return train, test, info
+
+        train, test, split_assignment = _split_examples_by_run_fraction(examples, test_size, seed)
+        info = {
+            "split_unit": "run_fraction",
+            "train_cases": sorted({e.scenario for e in train if e.scenario is not None}),
+            "test_cases": sorted({e.scenario for e in test if e.scenario is not None}),
+            "train_runs": None,
+            "test_runs": None,
+            "test_size": test_size,
+            "split_assignment": split_assignment,
+        }
+        return train, test, info
 
     has_explicit = any(v is not None for v in (train_cases, test_cases, train_runs, test_runs))
     if has_explicit:
@@ -112,26 +230,8 @@ def _resolve_split(
             "test_cases": sorted(set(test_cases)) if isinstance(test_cases, list) else (test_cases or []),
             "train_runs": train_runs if train_runs is not None else "all",
             "test_runs": test_runs if test_runs is not None else "all",
-        }
-        return train, test, info
-
-    if split_mode == "run":
-        # Hold out the last `test_size` fraction of run indices (e.g. runs 7-9
-        # of 0-9 with test_size=0.3), applied uniformly across every case —
-        # tests generalization to unseen repeat-runs rather than unseen cases.
-        distinct_runs = sorted({e.run for e in examples if e.run is not None})
-        if not distinct_runs:
-            raise ValueError("split_mode=run needs examples with a 'run' field.")
-        n_test_runs = max(1, int(round(len(distinct_runs) * test_size)))
-        test_run_set = set(distinct_runs[len(distinct_runs) - n_test_runs:])
-        train = [e for e in examples if e.run not in test_run_set]
-        test = [e for e in examples if e.run in test_run_set]
-        info = {
-            "split_unit": "run",
-            "train_cases": sorted({e.scenario for e in train if e.scenario is not None}),
-            "test_cases": sorted({e.scenario for e in test if e.scenario is not None}),
-            "train_runs": sorted(set(distinct_runs) - test_run_set),
-            "test_runs": sorted(test_run_set),
+            "test_size": None,
+            "split_assignment": None,
         }
         return train, test, info
 
@@ -143,6 +243,8 @@ def _resolve_split(
         "test_cases": sorted({e.scenario for e in test if e.scenario is not None}),
         "train_runs": "all",
         "test_runs": "all",
+        "test_size": test_size,
+        "split_assignment": None,
     }
     return train, test, info
 
@@ -397,6 +499,10 @@ def run_pairwise_fingerprint(
     if not train_examples or not test_examples:
         raise ValueError(f"Empty train/test split for {comparison_id} (split_mode={split_mode}).")
 
+    train_ids = {_sample_id_of(e) for e in train_examples}
+    test_ids = {_sample_id_of(e) for e in test_examples}
+    assert train_ids.isdisjoint(test_ids), f"Train/test overlap detected for {comparison_id}"
+
     train_args = SimpleNamespace(
         model_name=model_name,
         dtype=dtype,
@@ -456,6 +562,9 @@ def run_pairwise_fingerprint(
             "cases": sorted(set(train_cases_list) | set(test_cases_list)),
             "train_runs": split_info["train_runs"],
             "test_runs": split_info["test_runs"],
+            "test_size": split_info.get("test_size"),
+            "seed": seed,
+            "split_assignment": split_info.get("split_assignment"),
             "split_file": split_file,
         },
         "model_config": {
