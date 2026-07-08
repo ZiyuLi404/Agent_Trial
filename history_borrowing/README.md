@@ -29,12 +29,17 @@ theta_borrowed_j = alpha * theta_j + (1 - alpha) * Σ_{i≠j} w_ij * theta_i
 ## Run
 ```bash
 # from the repo root
-python history_borrowing/accuracy_summary.py --groundtruth_dir history_borrowing/groundtruth
+python history_borrowing/accuracy_summary.py --groundtruth_dir history_borrowing/data/groundtruth
 python history_borrowing/history_borrowing.py --accuracy_csv ... --similarity_csv ...
 python history_borrowing/run_all_orders.py
 python history_borrowing/train_borrow_params.py
 python history_borrowing/visualize_borrow_params.py --source diagnosis
 ```
+
+Current data lives under `history_borrowing/data/`, and the scripts default to that layout.
+Generated result files are written under `history_borrowing/data/results/`.
+Use `--similarity_csv history_borrowing/data/similarity_matrix/fingerprint_conversation_similarity.csv`
+to evaluate the fingerprint conversation similarity matrix.
 
 ## Relationship
 - Upstream: similarity matrices from **`embedding_similarity` (G)**.
@@ -42,4 +47,4 @@ python history_borrowing/visualize_borrow_params.py --source diagnosis
 
 ## Notes
 - ✅ Renamed `performance_estimation → history_borrowing`; internal self-paths updated.
-- This folder currently holds only code (its data was produced elsewhere). When run, outputs/data should go under `results/history_borrowing/` (see `REFACTOR_PLAN.md`).
+- Current inputs are kept under `history_borrowing/data/`; generated outputs go under `history_borrowing/data/results/`.

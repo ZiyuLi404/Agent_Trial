@@ -39,4 +39,5 @@ deployment_log.jsonl
 *.json
 *.claude
 *.sh
+*.png
 *.zip

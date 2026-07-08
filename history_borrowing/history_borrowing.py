@@ -19,11 +19,11 @@ This script:
 
 Usage:
     python history_borrowing/history_borrowing.py \
-        --accuracy_csv history_borrowing/accuracy_by_25_cases.csv \
-        --similarity_csv history_borrowing/similarity_matrix.csv \
-        --replicate_map_json history_borrowing/replicate_map.json \
-        --output_csv history_borrowing/history_borrowing_results.csv \
-        --output_summary_json history_borrowing/history_borrowing_summary.json
+        --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
+        --similarity_csv history_borrowing/data/similarity_matrix/embedding_diagnosis_similarity_matrix.csv \
+        --replicate_map_json history_borrowing/data/replicate_map.json \
+        --output_csv history_borrowing/data/results/history_borrowing_results.csv \
+        --output_summary_json history_borrowing/data/results/history_borrowing_summary.json
 """
 
 import argparse
@@ -32,6 +32,12 @@ import json
 import math
 import sys
 from pathlib import Path
+
+
+DEFAULT_REPLICATE_MAP_JSON = "history_borrowing/data/replicate_map.json"
+REPLICATE_MAP_FALLBACKS = [
+    "history_borrowing/data/results/past_result/replicate_map.json",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -369,22 +375,23 @@ def main() -> None:
     )
     parser.add_argument(
         "--accuracy_csv",
-        default="history_borrowing/accuracy_by_25_cases.csv",
+        default="history_borrowing/data/accuracy_by_25_cases.csv",
         help="Accuracy CSV produced by accuracy_summary.py.",
     )
     parser.add_argument(
         "--similarity_csv",
-        default="history_borrowing/similarity_matrix/diagnosis_similarity_matrix.csv",
+        default="history_borrowing/data/similarity_matrix/embedding_diagnosis_similarity_matrix.csv",
         help=(
             "Pairwise similarity matrix CSV "
-            "(default: history_borrowing/similarity_matrix/diagnosis_similarity_matrix.csv). "
-            "Use e.g. --similarity_csv history_borrowing/similarity_matrix/conversation_similarity_matrix.csv "
+            "(default: history_borrowing/data/similarity_matrix/embedding_diagnosis_similarity_matrix.csv). "
+            "Use e.g. --similarity_csv history_borrowing/data/similarity_matrix/"
+            "embedding_conversation_similarity_matrix.csv or fingerprint_conversation_similarity.csv "
             "to switch matrices."
         ),
     )
     parser.add_argument(
         "--replicate_map_json",
-        default=None,
+        default=DEFAULT_REPLICATE_MAP_JSON,
         help=(
             "Optional JSON file mapping model names to their similarity-matrix labels. "
             'E.g. {"deepseek-v4-flash": ["flash_1", "flash_2"], ...}'
@@ -392,13 +399,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--output_csv",
-        default="history_borrowing/history_borrowing_result/history_borrowing_results.csv",
-        help="Output CSV with per-model results (default: history_borrowing/history_borrowing_result/).",
+        default="history_borrowing/data/results/history_borrowing_results.csv",
+        help="Output CSV with per-model results (default: history_borrowing/data/results/).",
     )
     parser.add_argument(
         "--output_summary_json",
-        default="history_borrowing/history_borrowing_result/history_borrowing_summary.json",
-        help="Output JSON with best hyperparameters and MAE summary (default: history_borrowing/history_borrowing_result/).",
+        default="history_borrowing/data/results/history_borrowing_summary.json",
+        help="Output JSON with best hyperparameters and MAE summary (default: history_borrowing/data/results/).",
     )
     parser.add_argument(
         "--alpha_grid",
@@ -452,6 +459,12 @@ def main() -> None:
     # --- replicate map ---
     if args.replicate_map_json:
         rmap_path = Path(args.replicate_map_json)
+        if not rmap_path.exists() and args.replicate_map_json == DEFAULT_REPLICATE_MAP_JSON:
+            for fallback in REPLICATE_MAP_FALLBACKS:
+                fallback_path = Path(fallback)
+                if fallback_path.exists():
+                    rmap_path = fallback_path
+                    break
         if rmap_path.exists():
             with open(rmap_path, encoding="utf-8") as f:
                 replicate_map = json.load(f)
@@ -571,31 +584,31 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------
 #
 # python history_borrowing/accuracy_summary.py \
-#   --groundtruth_dir history_borrowing/groundtruth \
+#   --groundtruth_dir history_borrowing/data/groundtruth \
 #   --bucket_size 25 \
-#   --output_csv history_borrowing/accuracy_by_25_cases.csv
+#   --output_csv history_borrowing/data/results/accuracy_by_25_cases.csv
 #
 # Default (diagnosis matrix, row-order bucket assignment):
 # python history_borrowing/history_borrowing.py \
-#   --accuracy_csv history_borrowing/accuracy_by_25_cases.csv \
-#   --replicate_map_json history_borrowing/replicate_map.json
+#   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
+#   --replicate_map_json history_borrowing/data/replicate_map.json
 #
 # Reverse bucket order (model1->bucket2, model2->bucket1, model3->bucket4, model4->bucket3):
 # python history_borrowing/history_borrowing.py \
-#   --accuracy_csv history_borrowing/accuracy_by_25_cases.csv \
-#   --replicate_map_json history_borrowing/replicate_map.json \
+#   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
+#   --replicate_map_json history_borrowing/data/replicate_map.json \
 #   --bucket_order bucket2,bucket1,bucket4,bucket3
 #
 # Explicit per-model bucket assignment:
 # python history_borrowing/history_borrowing.py \
-#   --accuracy_csv history_borrowing/accuracy_by_25_cases.csv \
-#   --replicate_map_json history_borrowing/replicate_map.json \
+#   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
+#   --replicate_map_json history_borrowing/data/replicate_map.json \
 #   --bucket_assignment '{"deepseek-v4-flash":"bucket2","deepseek-v4-pro":"bucket1","gpt-5_4-mini":"bucket4","gpt-5_5":"bucket3"}'
 #
 # With conversation similarity matrix:
 # python history_borrowing/history_borrowing.py \
-#   --accuracy_csv history_borrowing/accuracy_by_25_cases.csv \
-#   --similarity_csv history_borrowing/similarity_matrix/conversation_similarity_matrix.csv \
-#   --replicate_map_json history_borrowing/replicate_map.json \
-#   --output_csv history_borrowing/history_borrowing_result/conversation_results.csv \
-#   --output_summary_json history_borrowing/history_borrowing_result/conversation_summary.json
+#   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
+#   --similarity_csv history_borrowing/data/similarity_matrix/embedding_conversation_similarity_matrix.csv \
+#   --replicate_map_json history_borrowing/data/replicate_map.json \
+#   --output_csv history_borrowing/data/results/conversation_results.csv \
+#   --output_summary_json history_borrowing/data/results/conversation_summary.json

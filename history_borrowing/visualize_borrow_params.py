@@ -13,16 +13,25 @@ Usage:
     # Conversation
     python history_borrowing/visualize_borrow_params.py --source conversation
 
+    # Fingerprint conversation
+    python history_borrowing/visualize_borrow_params.py --source fingerprint_conversation
+
     # Custom output path
     python history_borrowing/visualize_borrow_params.py \
         --source diagnosis \
-        --output history_borrowing/diagnosis_visualization.png
+        --output history_borrowing/data/results/diagnosis_visualization.png
 """
 
 import argparse
+import csv
 import json
+import math
+import os
 import sys
+import tempfile
 from pathlib import Path
+
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "matplotlib-cache"))
 
 import matplotlib
 matplotlib.use("Agg")
@@ -30,7 +39,6 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 # ---------------------------------------------------------------------------
 # Colour palette
@@ -46,7 +54,23 @@ OFF_WHITE = "#f9f9f9"
 SOURCE_LABELS = {
     "diagnosis":    "Diagnosis-Only Similarity",
     "conversation": "Full-Conversation Similarity",
+    "fingerprint_conversation": "Fingerprint Conversation Similarity",
+    "embedding_diagnosis": "Embedding Diagnosis Similarity",
+    "hybrid_0.7_embedding_diagnosis_0.3_fingerprint_conversation": "Hybrid Similarity (0.7/0.3)",
 }
+
+SOURCE_SHORT_LABELS = {
+    "diagnosis": "diagnosis",
+    "conversation": "conversation",
+    "fingerprint_conversation": "fingerprint",
+    "embedding_diagnosis": "embedding diagnosis",
+    "hybrid_0.7_embedding_diagnosis_0.3_fingerprint_conversation": "hybrid 0.7/0.3",
+}
+
+
+def mean(values) -> float:
+    vals = [v for v in values if not math.isnan(v)]
+    return sum(vals) / len(vals) if vals else float("nan")
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +243,7 @@ def build_figure(
     output_path,
 ):
     fig = plt.figure(figsize=(22, 15), facecolor="white")
+    source_short = SOURCE_SHORT_LABELS.get(source, source)
 
     fig.suptitle(
         f"{source_label}   (alpha = {alpha},  lambda = {int(lam)})",
@@ -242,7 +267,7 @@ def build_figure(
 
     table_ax = fig.add_subplot(top_gs[0])
     table_ax.set_facecolor(L_BLUE)
-    draw_summary_table(table_ax, source, alpha, lam, global_mae_25, global_mae_bor)
+    draw_summary_table(table_ax, source_short, alpha, lam, global_mae_25, global_mae_bor)
 
     desc_ax = fig.add_subplot(top_gs[1])
     draw_description(desc_ax, source_label, alpha, lam, global_mae_25, global_mae_bor)
@@ -251,7 +276,7 @@ def build_figure(
     draw_lineplot(
         overall_ax, perms, perm_mae_25, perm_mae_bor,
         title="MAE BY BUCKET ORDER ACROSS ALL MODELS",
-        after_label=f"MAE after ({source}, α={alpha}, λ={int(lam)})",
+        after_label=f"MAE after ({source_short}, α={alpha}, λ={int(lam)})",
         title_fontsize=9.5, val_fontsize=5.5,
     )
 
@@ -284,10 +309,10 @@ def build_figure(
             line_ax, perms,
             ms["mae_25_list"], ms["mae_bor_list"],
             title="MAE BY BUCKET ORDER",
-            after_label=f"After ({source})",
+            after_label=f"After ({source_short})",
             title_fontsize=8, val_fontsize=4.8,
         )
-        draw_barplot(bar_ax, ms["avg_mae_25"], ms["avg_mae_bor"], source)
+        draw_barplot(bar_ax, ms["avg_mae_25"], ms["avg_mae_bor"], source_short)
 
     # Shared legend note at the very bottom
     fig.text(
@@ -314,17 +339,17 @@ def main():
     )
     parser.add_argument(
         "--source", default="diagnosis",
-        choices=["diagnosis", "conversation"],
+        choices=sorted(SOURCE_LABELS),
         help="Which similarity source to visualise (default: diagnosis).",
     )
     parser.add_argument(
         "--full_csv",
-        default="history_borrowing/borrow_params_full.csv",
+        default="history_borrowing/data/results/borrow_params_full.csv",
         help="Long-form detail CSV from train_borrow_params.py.",
     )
     parser.add_argument(
         "--params_json",
-        default="history_borrowing/borrow_params.json",
+        default="history_borrowing/data/results/borrow_params.json",
         help="Parameter JSON from train_borrow_params.py.",
     )
     parser.add_argument(
@@ -334,16 +359,18 @@ def main():
     args = parser.parse_args()
 
     source      = args.source
-    output_path = args.output or f"history_borrowing/{source}_visualization.png"
+    output_path = args.output or f"history_borrowing/data/results/{source}_visualization.png"
 
     # ── Load data ────────────────────────────────────────────────────────────
     full_csv = Path(args.full_csv)
     if not full_csv.exists():
         sys.exit(f"ERROR: {full_csv} not found. Run train_borrow_params.py first.")
 
-    df = pd.read_csv(full_csv)
-    src_df = df[df["similarity_source"] == source].copy()
-    if src_df.empty:
+    with open(full_csv, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    src_rows = [r for r in rows if r["similarity_source"] == source]
+    if not src_rows:
         sys.exit(f"ERROR: no rows for source='{source}' in {full_csv}")
 
     params_path = Path(args.params_json)
@@ -360,28 +387,28 @@ def main():
     source_label   = SOURCE_LABELS[source]
 
     # ── Organise data ────────────────────────────────────────────────────────
-    perms  = sorted(src_df["permutation"].unique())
-    models = src_df[src_df["permutation"] == perms[0]]["model"].tolist()
+    perms  = sorted({r["permutation"] for r in src_rows})
+    models = list(dict.fromkeys(r["model"] for r in src_rows if r["permutation"] == perms[0]))
 
     perm_mae_25, perm_mae_bor = [], []
     for perm in perms:
-        pd_ = src_df[src_df["permutation"] == perm]
-        perm_mae_25.append(float(pd_["abs_error_25"].mean()))
-        perm_mae_bor.append(float(pd_["abs_error_borrowed"].mean()))
+        perm_rows = [r for r in src_rows if r["permutation"] == perm]
+        perm_mae_25.append(mean(float(r["abs_error_25"]) for r in perm_rows))
+        perm_mae_bor.append(mean(float(r["abs_error_borrowed"]) for r in perm_rows))
 
     model_stats: dict = {}
     for model in models:
-        m_df = src_df[src_df["model"] == model]
+        model_rows = [r for r in src_rows if r["model"] == model]
         m25, mbor = [], []
         for perm in perms:
-            row = m_df[m_df["permutation"] == perm]
-            m25.append(float(row["abs_error_25"].values[0])  if len(row) else np.nan)
-            mbor.append(float(row["abs_error_borrowed"].values[0]) if len(row) else np.nan)
+            row = next((r for r in model_rows if r["permutation"] == perm), None)
+            m25.append(float(row["abs_error_25"]) if row else np.nan)
+            mbor.append(float(row["abs_error_borrowed"]) if row else np.nan)
         model_stats[model] = {
             "mae_25_list":  m25,
             "mae_bor_list": mbor,
-            "avg_mae_25":   float(np.nanmean(m25)),
-            "avg_mae_bor":  float(np.nanmean(mbor)),
+            "avg_mae_25":   mean(m25),
+            "avg_mae_bor":  mean(mbor),
         }
 
     print(f"\nBuilding {source_label} visualization …")
@@ -416,7 +443,10 @@ if __name__ == "__main__":
 # Conversation:
 # python history_borrowing/visualize_borrow_params.py --source conversation
 #
+# Fingerprint conversation:
+# python history_borrowing/visualize_borrow_params.py --source fingerprint_conversation
+#
 # Custom output:
 # python history_borrowing/visualize_borrow_params.py \
 #     --source diagnosis \
-#     --output history_borrowing/diagnosis_visualization.png
+#     --output history_borrowing/data/results/diagnosis_visualization.png

@@ -3,8 +3,9 @@ Run history_borrowing.py for every permutation of bucket-to-model assignments
 and save results with names that reflect the order used.
 
 Default output directories:
-  diagnosis matrix    → history_borrowing/history_borrowing_result/all_orders/diagnosis/
-  conversation matrix → history_borrowing/history_borrowing_result/all_orders/conversation/
+  diagnosis matrix                → history_borrowing/data/results/all_orders/diagnosis/
+  conversation matrix             → history_borrowing/data/results/all_orders/conversation/
+  fingerprint conversation matrix → history_borrowing/data/results/all_orders/fingerprint_conversation/
 
 File naming:  b<n1>_b<n2>_b<n3>_b<n4>
   where n1..n4 are the bucket numbers assigned to model 1..4 in CSV row order.
@@ -13,7 +14,7 @@ File naming:  b<n1>_b<n2>_b<n3>_b<n4>
 Usage:
     python history_borrowing/run_all_orders.py
     python history_borrowing/run_all_orders.py \
-        --similarity_csv history_borrowing/similarity_matrix/conversation_similarity_matrix.csv
+        --similarity_csv history_borrowing/data/similarity_matrix/embedding_conversation_similarity_matrix.csv
     python history_borrowing/run_all_orders.py --output_dir my/custom/dir
 """
 
@@ -25,7 +26,7 @@ from pathlib import Path
 
 
 BUCKETS = ["bucket1", "bucket2", "bucket3", "bucket4"]
-BASE_OUTPUT_DIR = Path("history_borrowing/history_borrowing_result/all_orders")
+BASE_OUTPUT_DIR = Path("history_borrowing/data/results/all_orders")
 
 
 def bucket_tag(order: tuple) -> str:
@@ -39,15 +40,15 @@ def main():
     )
     parser.add_argument(
         "--accuracy_csv",
-        default="history_borrowing/accuracy_by_25_cases.csv",
+        default="history_borrowing/data/accuracy_by_25_cases.csv",
     )
     parser.add_argument(
         "--similarity_csv",
-        default="history_borrowing/similarity_matrix/diagnosis_similarity_matrix.csv",
+        default="history_borrowing/data/similarity_matrix/embedding_diagnosis_similarity_matrix.csv",
     )
     parser.add_argument(
         "--replicate_map_json",
-        default="history_borrowing/replicate_map.json",
+        default="history_borrowing/data/replicate_map.json",
     )
     parser.add_argument(
         "--alpha_grid",
@@ -62,7 +63,8 @@ def main():
         default=None,
         help=(
             "Directory to save all output files. "
-            "Defaults to all_orders/diagnosis/ or all_orders/conversation/ "
+            "Defaults to all_orders/diagnosis/, all_orders/conversation/, "
+            "or all_orders/fingerprint_conversation/ "
             "based on the similarity matrix filename."
         ),
     )
@@ -71,8 +73,10 @@ def main():
     if args.output_dir:
         output_dir = Path(args.output_dir)
     else:
-        sim_stem = Path(args.similarity_csv).stem  # e.g. diagnosis_similarity_matrix
-        if "conversation" in sim_stem:
+        sim_stem = Path(args.similarity_csv).stem
+        if "fingerprint" in sim_stem and "conversation" in sim_stem:
+            subfolder = "fingerprint_conversation"
+        elif "conversation" in sim_stem:
             subfolder = "conversation"
         elif "diagnosis" in sim_stem:
             subfolder = "diagnosis"

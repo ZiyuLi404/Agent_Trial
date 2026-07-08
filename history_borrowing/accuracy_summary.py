@@ -3,9 +3,9 @@ Analyze all JSON files in a groundtruth directory and output per-bucket accuracy
 
 Usage:
     python history_borrowing/accuracy_summary.py \
-        --groundtruth_dir history_borrowing/groundtruth \
+        --groundtruth_dir history_borrowing/data/groundtruth \
         --bucket_size 25 \
-        --output_csv history_borrowing/accuracy_by_25_cases.csv
+        --output_csv history_borrowing/data/results/accuracy_by_25_cases.csv
 """
 
 import argparse
@@ -136,7 +136,7 @@ def main():
     )
     parser.add_argument(
         "--groundtruth_dir",
-        default="history_borrowing/groundtruth",
+        default="history_borrowing/data/groundtruth",
         help="Directory containing .json groundtruth files.",
     )
     parser.add_argument(
@@ -147,7 +147,7 @@ def main():
     )
     parser.add_argument(
         "--output_csv",
-        default="history_borrowing/accuracy_by_25_cases.csv",
+        default="history_borrowing/data/results/accuracy_by_25_cases.csv",
         help="Path for the output CSV file.",
     )
     args = parser.parse_args()
