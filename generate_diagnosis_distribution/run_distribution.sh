@@ -166,8 +166,16 @@ PY
   fi
 }
 
-mapfile -t CASE_LIST < <(expand_cases "$CASES")
-mapfile -t STYLE_LIST < <(expand_styles "$STYLES")
+CASE_LIST=()
+while IFS= read -r item; do
+  [ -n "$item" ] && CASE_LIST+=("$item")
+done < <(expand_cases "$CASES")
+
+STYLE_LIST=()
+while IFS= read -r item; do
+  [ -n "$item" ] && STYLE_LIST+=("$item")
+done < <(expand_styles "$STYLES")
+
 IFS=',' read -r -a MODEL_LIST <<< "${MODELS// /}"
 
 if [ "${#CASE_LIST[@]}" -eq 0 ] || [ "${#MODEL_LIST[@]}" -eq 0 ] || [ "${#STYLE_LIST[@]}" -eq 0 ]; then
@@ -197,7 +205,7 @@ echo "================================================================"
 # ----------------------------------------------------------------------------
 wait_for_slot() {
   while [ "$(jobs -rp | wc -l)" -ge "$MAX_PARALLEL" ]; do
-    wait -n 2>/dev/null || true
+    sleep 1
   done
 }
 

@@ -194,7 +194,7 @@ Each call appends to `trial_log.jsonl`. Every record is tagged with `version_id`
 | Model | Provider |
 |---|---|
 | `deepseek-v4-flash`, `deepseek-v4-pro` (and legacy aliases `deepseek-chat`, `deepseek-reasoner`) | DeepSeek |
-| `gpt4`, `gpt4o`, `gpt-4o-mini`, `gpt3.5`, `o1-preview` | OpenAI |
+| `gpt4`, `gpt4o`, `gpt-4o-t0`, `gpt-4o-t1`, `gpt-4o-t2`, `gpt-4o-mini`, `gpt3.5`, `o1-preview` | OpenAI |
 | `claude3.5sonnet` | Anthropic |
 | `llama-2-70b-chat`, `llama-3-70b-instruct`, `mixtral-8x7b` | Replicate |
 

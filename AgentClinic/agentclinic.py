@@ -16,7 +16,10 @@ try:
 except ImportError:
     replicate = None
 
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 try:
     from transformers import pipeline
@@ -34,11 +37,19 @@ _deepseek_debug = {
     "doctor_reasoning_debug": "",
 }
 
+GPT4O_SNAPSHOT_ALIASES = {
+    # Official GPT-4o fixed snapshots, ordered chronologically.
+    "gpt-4o-t0": "gpt-4o-2024-05-13",
+    "gpt-4o-t1": "gpt-4o-2024-08-06",
+    "gpt-4o-t2": "gpt-4o-2024-11-20",
+}
+
 OPENAI_MODELS = {
     "gpt4": "gpt-4-turbo-preview",
     "gpt4v": "gpt-4-vision-preview",
     "gpt3.5": "gpt-3.5-turbo",
     "gpt4o": "gpt-4o",
+    **GPT4O_SNAPSHOT_ALIASES,
     "gpt-4o-mini": "gpt-4o-mini",
     "o1-preview": "o1-preview-2024-09-12",
     "gpt-5.4": "gpt-5.4",
@@ -64,6 +75,11 @@ DEEPSEEK_MODELS = {
     "deepseek-v4-flash",
     "deepseek-v4-pro",
 }
+
+
+def resolve_openai_model_id(model_str: str) -> str:
+    """Resolve a project OpenAI model alias to the API model ID."""
+    return OPENAI_MODELS[model_str]
 
 
 def resolve_local_path(path_str: str) -> Path:
@@ -201,6 +217,8 @@ def inference_huggingface(prompt, pipe):
 
 
 def get_openai_client():
+    if OpenAI is None:
+        raise ImportError("openai is not installed. Run: pip install openai")
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not set. Pass --openai_api_key or set it as an environment variable.")
@@ -208,6 +226,8 @@ def get_openai_client():
 
 
 def get_deepseek_client():
+    if OpenAI is None:
+        raise ImportError("openai is not installed. Run: pip install openai")
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
         raise ValueError("DEEPSEEK_API_KEY is not set. Pass --deepseek_api_key or set it as an environment variable.")
@@ -278,7 +298,7 @@ def query_model(
             # -------------------------
             if model_str in OPENAI_MODELS:
                 client = get_openai_client()
-                api_model = OPENAI_MODELS[model_str]
+                api_model = resolve_openai_model_id(model_str)
 
                 if image_requested:
                     if scene is None or not hasattr(scene, "image_url"):

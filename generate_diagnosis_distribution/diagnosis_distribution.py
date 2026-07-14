@@ -505,17 +505,21 @@ def main():
     parser.add_argument("--doctor_llm", type=str, default="deepseek-v4-pro",
                         help="Doctor LLM(s), comma-separated. "
                              "DeepSeek: deepseek-v4-pro, deepseek-v4-flash, deepseek-chat, deepseek-reasoner. "
-                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5, o1-preview. "
-                             "Example: 'gpt4o' / 'gpt4o, deepseek-v4-pro'")
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-t0, gpt-4o-t1, gpt-4o-t2, "
+                             "gpt-4o-mini, gpt4, gpt3.5, o1-preview. "
+                             "Example: 'gpt-4o-t2' / 'gpt4o, deepseek-v4-pro'")
     parser.add_argument("--patient_llm", type=str, default="deepseek-v4-flash",
                         help="Patient LLM. DeepSeek: deepseek-v4-flash, deepseek-v4-pro. "
-                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5.")
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-t0, gpt-4o-t1, gpt-4o-t2, "
+                             "gpt-4o-mini, gpt4, gpt3.5.")
     parser.add_argument("--measurement_llm", type=str, default="deepseek-v4-pro",
                         help="Measurement LLM. DeepSeek: deepseek-v4-pro, deepseek-v4-flash. "
-                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5.")
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-t0, gpt-4o-t1, gpt-4o-t2, "
+                             "gpt-4o-mini, gpt4, gpt3.5.")
     parser.add_argument("--moderator_llm", type=str, default="deepseek-v4-pro",
                         help="裁判模型，仅在 --bucketing semantic 或 --grade_correctness 时才会被调用。"
-                             "ChatGPT/OpenAI: gpt4o, gpt-4o-mini, gpt4, gpt3.5.")
+                             "ChatGPT/OpenAI: gpt4o, gpt-4o-t0, gpt-4o-t1, gpt-4o-t2, "
+                             "gpt-4o-mini, gpt4, gpt3.5.")
     parser.add_argument("--bucketing", type=str, default="exact",
                         choices=["exact", "semantic"],
                         help="exact（默认）：按原始字符串分桶，不调 moderator、不做语义合并；"
@@ -540,7 +544,8 @@ def main():
                         help="DeepSeek API key (or set DEEPSEEK_API_KEY env var)")
     parser.add_argument("--openai_api_key", type=str, default=None,
                         help="OpenAI/ChatGPT API key (or set OPENAI_API_KEY env var). "
-                             "Required when using gpt4o, gpt-4o-mini, gpt4, gpt3.5, o1-preview.")
+                             "Required when using gpt4o, gpt-4o-t0, gpt-4o-t1, "
+                             "gpt-4o-t2, gpt-4o-mini, gpt4, gpt3.5, o1-preview.")
     # Doctor prompt
     parser.add_argument("--doctor_prompt_json", type=str, default="doctor_prompts.json",
                         help="Path to JSON file containing doctor prompt templates")

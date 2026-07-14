@@ -2,6 +2,7 @@ import argparse
 import os
 import re
 import random
+import sys
 import time
 import json
 
@@ -13,8 +14,12 @@ except ImportError:
           "Run `pip install python-dotenv` or set keys via export/CLI flags.")
 
 # Datasets live in the repo-root AgentClinic/ package, one level up from this module.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "AgentClinic"
+    _REPO_ROOT, "AgentClinic"
 )
 
 try:
@@ -34,6 +39,8 @@ try:
 except ImportError:
     pipeline = None
 
+from AgentClinic.agentclinic import GPT4O_SNAPSHOT_ALIASES
+
 llama2_url = "meta/llama-2-70b-chat"
 llama3_url = "meta/meta-llama-3-70b-instruct"
 mixtral_url = "mistralai/mixtral-8x7b-instruct-v0.1"
@@ -43,6 +50,7 @@ OPENAI_MODELS = {
     "gpt4v": "gpt-4-vision-preview",
     "gpt3.5": "gpt-3.5-turbo",
     "gpt4o": "gpt-4o",
+    **GPT4O_SNAPSHOT_ALIASES,
     "gpt-4o-mini": "gpt-4o-mini",
     "o1-preview": "o1-preview-2024-09-12",
 }
