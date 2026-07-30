@@ -148,3 +148,74 @@ python lora_fingerprint/pairwise_fingerprint.py \
   --output_dir results/lora_fingerprint_pairwise \
   --text_field full_dialogue --split_mode scenario
 ```
+
+## AI Hospital data
+
+AI Hospital stores one JSONL file per model instead of one directory per model.
+Convert it to the detector's case layout first:
+
+```bash
+python lora_fingerprint/prepare_ai_hospital_data.py
+```
+
+For model/update detection, `doctor_dialogue` is preferable to `full_dialogue`:
+it excludes Patient and Reporter turns and therefore measures the model being
+compared more directly. Run every pair among the four available model files with:
+
+```bash
+python lora_fingerprint/analyze_pairwise_fingerprint.py \
+  --data_dir results/AI_Hospital_fingerprint \
+  --output_dir results/AI_Hospital_pairwise \
+  --analysis_dir results/AI_Hospital_pairwise_analysis \
+  --versions gpt3,gpt4,qwen_max,wenxin \
+  --text_field doctor_dialogue \
+  --split_mode scenario \
+  --test_size 0.3
+```
+
+The converter uses `patient_id` as `case_id` and `run=0`. Keep
+`--split_mode scenario` so a patient's consultation cannot appear in both
+training and test data. Do not use `--split_mode run` for this dataset because
+there is only one consultation per patient/model.
+
+For a quick test on only the first 20 cases shared by every model, write the
+subset to a separate directory:
+
+```bash
+python lora_fingerprint/prepare_ai_hospital_data.py \
+  --max_cases 20 \
+  --output_dir results/AI_Hospital_fingerprint_first_20
+
+python lora_fingerprint/analyze_pairwise_fingerprint.py \
+  --data_dir results/AI_Hospital_fingerprint_first_20 \
+  --output_dir results/AI_Hospital_pairwise_first_20 \
+  --analysis_dir results/AI_Hospital_pairwise_analysis_first_20 \
+  --versions gpt3,gpt4,qwen_max,wenxin \
+  --text_field doctor_dialogue \
+  --split_mode scenario \
+  --test_size 0.3 \
+  --epochs 1
+```
+
+Using a separate output directory matters: it prevents cases from an earlier
+full conversion from remaining in the small subset.
+
+## 3MDBench data
+
+The loader also accepts the native 3MDBench case shape
+`{case_id: {dialogue, diagnosis}}`; no conversion step is needed. For the three
+model directories under `results/3MDBench`, run:
+
+```bash
+python lora_fingerprint/analyze_pairwise_fingerprint.py \
+  --data_dir results/3MDBench \
+  --output_dir results/3MDBench_pairwise \
+  --analysis_dir results/3MDBench_pairwise_analysis \
+  --text_field doctor_dialogue \
+  --split_mode scenario \
+  --test_size 0.3 \
+  --epochs 1
+```
+
+With no `--versions` or `--pairs`, the runner discovers `deepseek_flash`,
+`deepseek_fpro`, and `qwen37plus` and trains all three pairwise comparisons.

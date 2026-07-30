@@ -1,50 +1,57 @@
-# history_borrowing — History Borrowing / Performance Estimation (H)
+# History borrowing algorithms
 
-**When a model has too few cases in a bucket to trust its accuracy, borrow data from "models that behave similarly" to correct the estimate — so a small sample can still be estimated well.**
+The implementations are separated by method while continuing to share the
+existing inputs and generated-data area under `history_borrowing/data/`.
 
-Offline analysis — no consultations, no engine. Reads accuracy and similarity data that were already produced.
+## Layout
 
-## Inputs
-- `accuracy_by_25_cases.csv` — per-bucket accuracy + gold counts (from `accuracy_summary.py`)
-- `*_similarity_matrix.csv` — model-to-model similarity (from **`embedding_similarity` (G)**)
+- `algorithm_1/` — convex similarity-aware history borrowing
+- `algorithm_2/` — Bayesian pseudo-posterior history borrowing
+- `data/` — shared ground-truth inputs, similarity matrices, and results
 
-## How it works
-Turn similarity into distance `d(A,B) = 1 - sim(A,B)`, then let each model borrow its peers' accuracy, distance-weighted:
+## Algorithm 1
 
-```
-theta_borrowed_j = alpha * theta_j + (1 - alpha) * Σ_{i≠j} w_ij * theta_i
-```
+See [`algorithm_1/README.md`](algorithm_1/README.md) for its workflow and CLI
+commands.
 
-`alpha` trades off "trust myself" vs "trust peers"; `w_ij` comes from distance via `lambda`.
+## Algorithm 2
 
-## Files (5 = 5 real steps, kept separate)
-| File | Step |
-|------|------|
-| `accuracy_summary.py` | Summarize per-bucket accuracy → `accuracy_by_25_cases.csv` |
-| `history_borrowing.py` | One borrowing estimate (given alpha/lambda) |
-| `run_all_orders.py` | Run `history_borrowing.py` over all 24 bucket↔model permutations |
-| `train_borrow_params.py` | Fit one global (alpha, lambda) minimizing mean MAE |
-| `visualize_borrow_params.py` | Render the results as a dashboard |
+Compute the full 100-case reference posterior for each model/version:
 
-## Run
 ```bash
-# from the repo root
-python history_borrowing/accuracy_summary.py --groundtruth_dir history_borrowing/data/groundtruth
-python history_borrowing/history_borrowing.py --accuracy_csv ... --similarity_csv ...
-python history_borrowing/run_all_orders.py
-python history_borrowing/train_borrow_params.py
-python history_borrowing/visualize_borrow_params.py --source diagnosis
+python3 history_borrowing/algorithm_2/full_posterior.py
 ```
 
-Current data lives under `history_borrowing/data/`, and the scripts default to that layout.
-Generated result files are written under `history_borrowing/data/results/`.
-Use `--similarity_csv history_borrowing/data/similarity_matrix/fingerprint_conversation_similarity.csv`
-to evaluate the fingerprint conversation similarity matrix.
+This writes
+`history_borrowing/data/results/algorithm_2/full_posterior.csv` using
+`Beta(1 + n_full * accuracy_full, 1 + n_full * (1 - accuracy_full))`.
+Use `--alpha0` and `--beta0` to change the prior.
 
-## Relationship
-- Upstream: similarity matrices from **`embedding_similarity` (G)**.
-- Sibling of **`deployment_replay` (E)**: both are "a new version has too little data — borrow from the past." H borrows *horizontally* (similar models), E borrows *vertically* (its own old cases).
+```bash
+python3 history_borrowing/algorithm_2/bayesian_pseudo_posterior.py \
+  --data_dir history_borrowing/data/groundtruth \
+  --similarity_file history_borrowing/data/similarity_matrix/embedding_diagnosis_similarity_matrix.csv \
+  --lambda 10 \
+  --alpha0 1 \
+  --beta0 1 \
+  --credible_level 0.95 \
+  --all_orders \
+  --output_dir history_borrowing/data/results/bayesian_pseudo_posterior
+```
 
-## Notes
-- ✅ Renamed `performance_estimation → history_borrowing`; internal self-paths updated.
-- Current inputs are kept under `history_borrowing/data/`; generated outputs go under `history_borrowing/data/results/`.
+The trajectory records the predictive and updated Beta parameters, means,
+variances, and equal-tailed pseudo-posterior intervals. These intervals describe
+the pseudo-posterior but should not be interpreted as calibrated until the
+borrowing rule has been validated.
+
+With `--all_orders`, Algorithm 2 also writes `bayesian_update_all_orders.csv`,
+the model/order summaries, `best_orders_by_wasserstein.csv`, and
+`best_orders_by_mae.csv`. The reference is the paper's full-data Beta posterior;
+it is not treated as exact ground truth. Omit the flag when only the sequential
+Bayesian trajectory is needed.
+
+Run its unit tests with:
+
+```bash
+python3 -m unittest history_borrowing/algorithm_2/test_bayesian_pseudo_posterior.py -v
+```

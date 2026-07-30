@@ -2,7 +2,7 @@
 Analyze all JSON files in a groundtruth directory and output per-bucket accuracy CSV.
 
 Usage:
-    python history_borrowing/accuracy_summary.py \
+    python history_borrowing/algorithm_1/accuracy_summary.py \
         --groundtruth_dir history_borrowing/data/groundtruth \
         --bucket_size 25 \
         --output_csv history_borrowing/data/results/accuracy_by_25_cases.csv

@@ -12,10 +12,10 @@ File naming:  b<n1>_b<n2>_b<n3>_b<n4>
   e.g. b2_b1_b3_b4 means model1->bucket2, model2->bucket1, model3->bucket3, model4->bucket4
 
 Usage:
-    python history_borrowing/run_all_orders.py
-    python history_borrowing/run_all_orders.py \
+    python history_borrowing/algorithm_1/run_all_orders.py
+    python history_borrowing/algorithm_1/run_all_orders.py \
         --similarity_csv history_borrowing/data/similarity_matrix/embedding_conversation_similarity_matrix.csv
-    python history_borrowing/run_all_orders.py --output_dir my/custom/dir
+    python history_borrowing/algorithm_1/run_all_orders.py --output_dir my/custom/dir
 """
 
 import argparse
@@ -97,7 +97,7 @@ def main():
         bucket_order_str = ",".join(order)
 
         cmd = [
-            sys.executable, "history_borrowing/history_borrowing.py",
+            sys.executable, "history_borrowing/algorithm_1/history_borrowing.py",
             "--accuracy_csv",       args.accuracy_csv,
             "--similarity_csv",     args.similarity_csv,
             "--replicate_map_json", args.replicate_map_json,

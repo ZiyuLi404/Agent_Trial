@@ -19,16 +19,16 @@ Outputs
 
 Usage
 -----
-  python history_borrowing/train_borrow_params.py
+  python history_borrowing/algorithm_1/train_borrow_params.py
 
-  python history_borrowing/train_borrow_params.py \
+  python history_borrowing/algorithm_1/train_borrow_params.py \
       --diagnosis_dir   history_borrowing/data/results/all_orders/diagnosis \
       --conversation_dir history_borrowing/data/results/all_orders/conversation \
       --fingerprint_conversation_dir history_borrowing/data/results/all_orders/fingerprint_conversation \
       --alpha_grid "0.5,0.6,0.7,0.8,0.9,1.0" \
       --lambda_grid "0,5,10,20,50,100,200"
 
-  python history_borrowing/train_borrow_params.py \
+  python history_borrowing/algorithm_1/train_borrow_params.py \
       --source_dir fingerprint_conversation=history_borrowing/data/results/compare/all_orders/fingerprint_conversation \
       --source_dir embedding_diagnosis=history_borrowing/data/results/compare/all_orders/embedding_diagnosis \
       --source_dir hybrid_0.7_embedding_diagnosis_0.3_fingerprint_conversation=history_borrowing/data/results/compare/all_orders/hybrid_0.7_embedding_diagnosis_0.3_fingerprint_conversation

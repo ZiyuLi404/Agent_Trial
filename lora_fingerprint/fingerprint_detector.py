@@ -60,7 +60,7 @@ from transformers import (
 )
 
 BATCH_SUFFIX_RE = re.compile(r"_\d+$")
-TEXT_FIELD_CHOICES = ["full_dialogue", "diagnosis_text"]
+TEXT_FIELD_CHOICES = ["full_dialogue", "doctor_dialogue", "diagnosis_text"]
 
 
 # --------------------------------------------------------------------------- #
@@ -104,6 +104,39 @@ def normalize_text(value: Any) -> str:
     return "\n".join(str(value).replace("\r", "\n").splitlines()).strip()
 
 
+def dialogue_for_role(dialogue: Any, role: str) -> str:
+    """Extract complete multiline turns from a ``Role: text`` transcript."""
+    text = normalize_text(dialogue)
+    markers = list(re.finditer(r"(?m)^(Patient|Doctor):[ \t]*", text))
+    turns: list[str] = []
+    for index, marker in enumerate(markers):
+        if marker.group(1) != role:
+            continue
+        end = markers[index + 1].start() if index + 1 < len(markers) else len(text)
+        content = normalize_text(text[marker.end():end])
+        if content:
+            turns.append(f"{role}: {content}")
+    return "\n\n".join(turns)
+
+
+def sample_from_3mdbench_case(case_obj: Any, case_path: Path) -> dict[str, Any] | None:
+    """Normalize ``{case_id: {dialogue, diagnosis}}`` into one sample."""
+    if not isinstance(case_obj, dict) or len(case_obj) != 1:
+        return None
+    case_id, record = next(iter(case_obj.items()))
+    if str(case_id) != str(scenario_of(case_path.name)) or not isinstance(record, dict):
+        return None
+    if "dialogue" not in record:
+        return None
+    dialogue = normalize_text(record.get("dialogue"))
+    return {
+        "run": 0,
+        "full_dialogue": dialogue,
+        "doctor_dialogue": dialogue_for_role(dialogue, "Doctor"),
+        "diagnosis_text": normalize_text(record.get("diagnosis")),
+    }
+
+
 def load_examples(data_dir: Path, text_field: str) -> list[Example]:
     examples: list[Example] = []
     for model_dir in sorted(p for p in data_dir.iterdir() if p.is_dir()):
@@ -115,9 +148,18 @@ def load_examples(data_dir: Path, text_field: str) -> list[Example]:
                 print(f"[WARN] failed to read {case_path}: {exc}")
                 continue
             samples = case_obj.get("samples", [])
+            is_3mdbench_case = False
+            if not isinstance(samples, list) or not samples:
+                normalized_sample = sample_from_3mdbench_case(case_obj, case_path)
+                if normalized_sample is not None:
+                    samples = [normalized_sample]
+                    is_3mdbench_case = True
             if not isinstance(samples, list):
                 continue
-            gold_diagnosis = normalize_text(case_obj.get("correct_diagnosis_reference")) or None
+            if is_3mdbench_case:
+                gold_diagnosis = normalize_text(samples[0].get("diagnosis_text")) or None
+            else:
+                gold_diagnosis = normalize_text(case_obj.get("correct_diagnosis_reference")) or None
             for sample in samples:
                 if not isinstance(sample, dict):
                     continue
@@ -555,4 +597,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    

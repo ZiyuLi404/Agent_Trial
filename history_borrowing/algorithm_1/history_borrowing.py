@@ -18,7 +18,7 @@ This script:
   4. Grid-searches (alpha, lambda) to minimise MAE vs. ground-truth total accuracy.
 
 Usage:
-    python history_borrowing/history_borrowing.py \
+    python history_borrowing/algorithm_1/history_borrowing.py \
         --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
         --similarity_csv history_borrowing/data/similarity_matrix/embedding_diagnosis_similarity_matrix.csv \
         --replicate_map_json history_borrowing/data/replicate_map.json \
@@ -583,30 +583,30 @@ if __name__ == "__main__":
 # Example commands
 # ---------------------------------------------------------------------------
 #
-# python history_borrowing/accuracy_summary.py \
+# python history_borrowing/algorithm_1/accuracy_summary.py \
 #   --groundtruth_dir history_borrowing/data/groundtruth \
 #   --bucket_size 25 \
 #   --output_csv history_borrowing/data/results/accuracy_by_25_cases.csv
 #
 # Default (diagnosis matrix, row-order bucket assignment):
-# python history_borrowing/history_borrowing.py \
+# python history_borrowing/algorithm_1/history_borrowing.py \
 #   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
 #   --replicate_map_json history_borrowing/data/replicate_map.json
 #
 # Reverse bucket order (model1->bucket2, model2->bucket1, model3->bucket4, model4->bucket3):
-# python history_borrowing/history_borrowing.py \
+# python history_borrowing/algorithm_1/history_borrowing.py \
 #   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
 #   --replicate_map_json history_borrowing/data/replicate_map.json \
 #   --bucket_order bucket2,bucket1,bucket4,bucket3
 #
 # Explicit per-model bucket assignment:
-# python history_borrowing/history_borrowing.py \
+# python history_borrowing/algorithm_1/history_borrowing.py \
 #   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
 #   --replicate_map_json history_borrowing/data/replicate_map.json \
 #   --bucket_assignment '{"deepseek-v4-flash":"bucket2","deepseek-v4-pro":"bucket1","gpt-5_4-mini":"bucket4","gpt-5_5":"bucket3"}'
 #
 # With conversation similarity matrix:
-# python history_borrowing/history_borrowing.py \
+# python history_borrowing/algorithm_1/history_borrowing.py \
 #   --accuracy_csv history_borrowing/data/accuracy_by_25_cases.csv \
 #   --similarity_csv history_borrowing/data/similarity_matrix/embedding_conversation_similarity_matrix.csv \
 #   --replicate_map_json history_borrowing/data/replicate_map.json \
