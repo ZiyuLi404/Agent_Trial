@@ -23,7 +23,7 @@ LOADERS = {
 }
 
 
-def run_case(scenario, config):
+def run_case(scenario, config, doctor_factory=None):
     """Run one AgentClinic case.
 
     Returns (diagnosis, correctness, full_dialogue, meta) where meta contains:
@@ -38,7 +38,14 @@ def run_case(scenario, config):
 
     meas_agent = MeasurementAgent(scenario=scenario, backend_str=measurement_llm)
     patient_agent = PatientAgent(scenario=scenario, backend_str=patient_llm)
-    doctor_agent = DoctorAgent(scenario=scenario, backend_str=doctor_llm, max_infs=total_inferences)
+    if doctor_factory is None:
+        doctor_agent = DoctorAgent(
+            scenario=scenario,
+            backend_str=doctor_llm,
+            max_infs=total_inferences,
+        )
+    else:
+        doctor_agent = doctor_factory(scenario, config)
 
     pi_dialogue = ""
     doctor_dialogue = ""
