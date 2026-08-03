@@ -12,13 +12,14 @@ except ImportError:
     pass
 
 from agent_system_adapters.agentclinic import AgentClinicAdapter
+from change_generators.harnesses import HarnessArtifact
 from change_generators.skills import SkillArtifact
 from trial.trial_manager import parse_cases
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Paired AgentClinic comparison with an external skill adapter"
+        description="Paired AgentClinic baseline/variant comparison"
     )
     parser.add_argument("--doctor_llm", default="deepseek-v4-pro")
     parser.add_argument("--patient_llm", default="deepseek-v4-flash")
@@ -28,17 +29,25 @@ def build_parser() -> argparse.ArgumentParser:
                         choices=["MedQA", "MedQA_Ext", "NEJM", "NEJM_Ext"])
     parser.add_argument("--cases", required=True,
                         help="Case range '0-19' or comma-separated list '1,3,4'")
-    parser.add_argument("--skill_path", required=True)
-    parser.add_argument("--total_inferences", type=int, default=20)
-    parser.add_argument("--output_dir", default="results/skill_experiments/agentclinic")
+    parser.add_argument("--skill_path", default=None,
+                        help="Optional versioned skill markdown file")
+    parser.add_argument("--harness_path", default=None,
+                        help="Optional versioned harness TOML file")
+    parser.add_argument("--total_inferences", type=int, default=20,
+                        help="Baseline turn budget; a harness may override the variant budget")
+    parser.add_argument("--output_dir", default="results/variant_experiments/agentclinic")
     parser.add_argument("--dry_run", action="store_true")
     return parser
 
 
-def comparison_payload(args, skill, paired_results, counts) -> dict:
+def comparison_payload(args, adapter, paired_results, counts) -> dict:
     completed = len(paired_results)
+    baseline_config = {
+        "total_inferences": args.total_inferences,
+    }
+    variant_config = adapter.effective_config(baseline_config)
     return {
-        "comparison": "no_skill_vs_with_skill",
+        "comparison": "baseline_vs_variant",
         "agent_system": "agentclinic",
         "doctor_llm": args.doctor_llm,
         "dataset": args.dataset,
@@ -46,16 +55,17 @@ def comparison_payload(args, skill, paired_results, counts) -> dict:
         "patient_llm": args.patient_llm,
         "measurement_llm": args.measurement_llm,
         "moderator_llm": args.moderator_llm,
-        "total_inferences": args.total_inferences,
-        "skill": skill.to_dict(),
+        "baseline_config": baseline_config,
+        "variant_config": variant_config,
+        "variant": adapter.variant_metadata(),
         "completed_pairs": completed,
         "summary": {
-            "no_skill_correct": counts["no_skill"],
-            "with_skill_correct": counts["with_skill"],
-            "no_skill_accuracy": round(counts["no_skill"] / completed, 4) if completed else 0,
-            "with_skill_accuracy": round(counts["with_skill"] / completed, 4) if completed else 0,
+            "baseline_correct": counts["baseline"],
+            "variant_correct": counts["variant"],
+            "baseline_accuracy": round(counts["baseline"] / completed, 4) if completed else 0,
+            "variant_accuracy": round(counts["variant"] / completed, 4) if completed else 0,
             "accuracy_delta": round(
-                (counts["with_skill"] - counts["no_skill"]) / completed, 4
+                (counts["variant"] - counts["baseline"]) / completed, 4
             ) if completed else 0,
             "improved_cases": counts["improved"],
             "regressed_cases": counts["regressed"],
@@ -65,11 +75,16 @@ def comparison_payload(args, skill, paired_results, counts) -> dict:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
-    skill = SkillArtifact.load(args.skill_path)
+    parser = build_parser()
+    args = parser.parse_args()
+    if not args.skill_path and not args.harness_path:
+        parser.error("At least one of --skill_path or --harness_path is required")
+
+    skill = SkillArtifact.load(args.skill_path) if args.skill_path else None
+    harness = HarnessArtifact.load(args.harness_path) if args.harness_path else None
     adapters = {
-        "no_skill": AgentClinicAdapter(),
-        "with_skill": AgentClinicAdapter(skill),
+        "baseline": AgentClinicAdapter(),
+        "variant": AgentClinicAdapter(skill, harness),
     }
     config = {
         "doctor_llm": args.doctor_llm,
@@ -91,25 +106,30 @@ def main() -> None:
             name: adapter.build_doctor(scenario, config).system_prompt()
             for name, adapter in adapters.items()
         }
-        prompt_path = output_dir / "skill_prompt_comparison.txt"
+        prompt_path = output_dir / "variant_prompt_comparison.txt"
         prompt_path.write_text(
-            "=== NO SKILL ===\n"
-            + prompts["no_skill"]
-            + "\n\n=== WITH SKILL ===\n"
-            + prompts["with_skill"]
+            "=== BASELINE ===\n"
+            + prompts["baseline"]
+            + "\n\n=== VARIANT ===\n"
+            + prompts["variant"]
             + "\n",
             encoding="utf-8",
         )
+        manifest_path = output_dir / "variant_manifest.json"
+        manifest_path.write_text(
+            json.dumps(adapters["variant"].variant_metadata(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
         print(f"Dry run complete; no API calls were made: {prompt_path}")
-        print(f"Skill SHA-256: {skill.sha256}")
+        print(f"Variant manifest: {manifest_path}")
         return
 
     paired_results = []
-    counts = {"no_skill": 0, "with_skill": 0, "improved": 0, "regressed": 0}
-    out_path = output_dir / "skill_comparison.json"
+    counts = {"baseline": 0, "variant": 0, "improved": 0, "regressed": 0}
+    out_path = output_dir / "variant_comparison.json"
 
     for pair_index, (case_id, timestamp, scenario) in enumerate(cases):
-        order = ["no_skill", "with_skill"] if pair_index % 2 == 0 else ["with_skill", "no_skill"]
+        order = ["baseline", "variant"] if pair_index % 2 == 0 else ["variant", "baseline"]
         condition_results = {}
         for condition in order:
             print(f"\n--- Case {case_id}: {condition} ---")
@@ -124,10 +144,10 @@ def main() -> None:
             }
             counts[condition] += int(bool(correctness))
 
-        baseline_correct = condition_results["no_skill"]["correct"]
-        skill_correct = condition_results["with_skill"]["correct"]
-        counts["improved"] += int(not baseline_correct and skill_correct)
-        counts["regressed"] += int(baseline_correct and not skill_correct)
+        baseline_correct = condition_results["baseline"]["correct"]
+        variant_correct = condition_results["variant"]["correct"]
+        counts["improved"] += int(not baseline_correct and variant_correct)
+        counts["regressed"] += int(baseline_correct and not variant_correct)
         paired_results.append({
             "case_id": case_id,
             "timestamp": timestamp,
@@ -137,7 +157,7 @@ def main() -> None:
         })
         out_path.write_text(
             json.dumps(
-                comparison_payload(args, skill, paired_results, counts),
+                comparison_payload(args, adapters["variant"], paired_results, counts),
                 indent=2,
                 ensure_ascii=False,
             ),

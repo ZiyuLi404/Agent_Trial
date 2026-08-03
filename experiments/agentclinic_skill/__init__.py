@@ -1,1 +1,0 @@
-"""Paired AgentClinic skill experiments."""
