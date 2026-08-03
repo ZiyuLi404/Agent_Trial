@@ -1,0 +1,12 @@
+seed = 42
+
+[ratios]
+train = 2
+val = 2
+test = 6
+
+[expected_sizes]
+MedQA = 107
+MedQA_Ext = 214
+NEJM = 15
+NEJM_Ext = 120
