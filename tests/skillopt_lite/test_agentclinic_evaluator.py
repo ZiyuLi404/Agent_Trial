@@ -6,9 +6,11 @@ from unittest.mock import patch
 
 from agent_system_adapters.agentclinic import AgentClinicAdapter
 from change_generators.skills.optimizers.skillopt_lite.evaluator import (
+    build_result_row,
     build_parser,
     evaluate,
 )
+from change_generators.skills.optimizers.skillopt_lite.gate import compare_result_sets
 from change_generators.skills.optimizers.skillopt_lite.samples import export_samples
 from change_generators.skills.optimizers.skillopt_lite.splits import (
     build_split_manifest,
@@ -79,6 +81,66 @@ class SkillOptLiteSampleTest(unittest.TestCase):
             self.assertTrue((root / "failed" / "fail-1.md").is_file())
 
 
+class SkillOptLiteGateTest(unittest.TestCase):
+    def test_flat_paired_gate_retains_baseline_and_reports_case_swaps(self):
+        baseline = {
+            "a": {"id": "a", "hard": 0, "correct_text": "A", "predicted_answer": "x"},
+            "b": {"id": "b", "hard": 1, "correct_text": "B", "predicted_answer": "B"},
+        }
+        candidate = {
+            "a": {"id": "a", "hard": 1, "correct_text": "A", "predicted_answer": "A"},
+            "b": {"id": "b", "hard": 0, "correct_text": "B", "predicted_answer": "y"},
+        }
+
+        report = compare_result_sets(baseline, candidate)
+
+        self.assertEqual(report["action"], "flat")
+        self.assertEqual(report["selected"], "baseline")
+        self.assertEqual(report["improved_cases"], 1)
+        self.assertEqual(report["regressed_cases"], 1)
+        self.assertEqual(report["delta"], 0.0)
+
+    def test_paired_gate_rejects_mismatched_ids(self):
+        baseline = {"a": {"id": "a", "hard": 1}}
+        candidate = {"b": {"id": "b", "hard": 1}}
+        with self.assertRaisesRegex(ValueError, "identical ids"):
+            compare_result_sets(baseline, candidate)
+
+
+class EvaluatorTelemetryTest(unittest.TestCase):
+    class Scenario:
+        def examiner_information(self):
+            return "Diagnose this case."
+
+        def diagnosis_information(self):
+            return "Diagnosis A"
+
+    def test_result_row_preserves_retry_health_and_observed_calls(self):
+        row, _ = build_result_row(
+            dataset="MedQA",
+            split="val",
+            case_id=1,
+            scenario=self.Scenario(),
+            diagnosis="DIAGNOSIS READY: Diagnosis A",
+            correctness=True,
+            dialogue=(
+                "Doctor: Question one\n"
+                "Patient: Answer one\n"
+                "Doctor: DIAGNOSIS READY: Diagnosis A\n"
+            ),
+            meta={
+                "raw_doctor_response_empty": True,
+                "doctor_retry_count": 1,
+                "reasoning_content_present": True,
+            },
+            contract_dry_run=False,
+        )
+
+        self.assertEqual(row["observed_model_calls"], 5)
+        self.assertEqual(row["backend"]["doctor_retry_count"], 1)
+        self.assertTrue(row["backend"]["reasoning_content_present"])
+
+
 class AgentClinicSkillOptEvaluatorContractTest(unittest.TestCase):
     def test_contract_dry_run_writes_complete_contract_without_api_calls(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -140,12 +202,15 @@ class AgentClinicSkillOptEvaluatorContractTest(unittest.TestCase):
                 "fail_reason",
                 "n_turns",
                 "tests_requested",
+                "observed_model_calls",
+                "backend",
                 "trajectory",
                 "variant",
             }
             for row in rows:
                 self.assertTrue(required.issubset(row))
                 self.assertEqual(row["phase"], "contract_dry_run")
+                self.assertEqual(row["observed_model_calls"], 0)
                 prediction_dir = output_dir / "predictions" / row["id"]
                 self.assertTrue((prediction_dir / "conversation.json").is_file())
                 self.assertTrue((prediction_dir / "target_system_prompt.txt").is_file())
@@ -155,6 +220,8 @@ class AgentClinicSkillOptEvaluatorContractTest(unittest.TestCase):
                 (workspace / ".skillopt" / "samples" / "failed").glob("*.md")
             )
             self.assertEqual(len(failed_samples), 2)
+            self.assertEqual(summary["observed_model_calls"], 0)
+            self.assertEqual(summary["backend_health"]["total_doctor_retries"], 0)
 
 
 if __name__ == "__main__":

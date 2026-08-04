@@ -70,6 +70,19 @@ def build_result_row(
         message["speaker"] == "Doctor" and "REQUEST TEST" in message["content"]
         for message in messages
     )
+    doctor_retry_count = int(meta.get("doctor_retry_count", 0) or 0)
+    doctor_empty_response = bool(meta.get("doctor_empty_response"))
+    interaction_calls = sum(
+        message["speaker"] in {"Patient", "Measurement"} for message in messages
+    )
+    moderator_calls = int("DIAGNOSIS READY" in response)
+    observed_model_calls = 0 if contract_dry_run else (
+        n_turns
+        + doctor_retry_count
+        + int(doctor_empty_response)
+        + interaction_calls
+        + moderator_calls
+    )
 
     if contract_dry_run:
         fail_reason = "contract-dry-run: no model API call was made"
@@ -108,6 +121,14 @@ def build_result_row(
         "fail_reason": fail_reason,
         "n_turns": n_turns,
         "tests_requested": tests_requested,
+        "observed_model_calls": observed_model_calls,
+        "backend": {
+            "raw_doctor_response_empty": bool(meta.get("raw_doctor_response_empty")),
+            "doctor_retry_count": doctor_retry_count,
+            "doctor_empty_response": doctor_empty_response,
+            "backend_error_message": str(meta.get("backend_error_message", "") or ""),
+            "reasoning_content_present": bool(meta.get("reasoning_content_present")),
+        },
         "trajectory": conversation,
         "variant": meta.get("variant", {}),
         "phase": "contract_dry_run" if contract_dry_run else "evaluation",
@@ -289,6 +310,23 @@ def evaluate(args: argparse.Namespace) -> dict:
         "n": len(all_rows),
         "hard": hard,
         "soft": soft,
+        "observed_model_calls": sum(
+            int(row.get("observed_model_calls", 0) or 0) for row in all_rows
+        ),
+        "backend_health": {
+            "rows_with_retries": sum(
+                int((row.get("backend") or {}).get("doctor_retry_count", 0) > 0)
+                for row in all_rows
+            ),
+            "total_doctor_retries": sum(
+                int((row.get("backend") or {}).get("doctor_retry_count", 0) or 0)
+                for row in all_rows
+            ),
+            "empty_response_failures": sum(
+                int(bool((row.get("backend") or {}).get("doctor_empty_response")))
+                for row in all_rows
+            ),
+        },
         "samples": sample_counts,
         "results_path": str(results_path),
         "workspace": str(workspace),

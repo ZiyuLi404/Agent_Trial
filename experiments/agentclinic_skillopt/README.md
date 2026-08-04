@@ -89,7 +89,9 @@ results/skillopt_workspaces/agentclinic/<doctor-model>/
 Each `results.jsonl` row includes the SkillOpt-Lite-required `id`, `hard`, and
 `soft` fields plus AgentClinic-specific fields such as diagnosis, number of
 doctor turns, requested tests, failure reason, trajectory, and skill/harness
-version metadata. The CLI ends with a parseable line of the form:
+version metadata. It also records observed model calls and backend retry/empty
+response health so infrastructure failures are not confused with skill errors.
+The CLI ends with a parseable line of the form:
 
 ```text
 Results: hard=0.4000 soft=0.4000
@@ -97,3 +99,19 @@ Results: hard=0.4000 soft=0.4000
 
 To resume an interrupted run, reuse the exact `--output_dir` and add `--resume`.
 Existing case IDs are skipped.
+
+## Paired validation gate
+
+Compare a baseline and candidate evaluated on exactly the same case IDs:
+
+```bash
+python -m change_generators.skills.optimizers.skillopt_lite.gate \
+  --baseline /path/to/baseline/results.jsonl \
+  --candidate /path/to/candidate/results.jsonl \
+  --output /path/to/gate_report.json
+```
+
+The gate promotes only a strictly better candidate. A tie is `flat` and retains
+the baseline; a lower score is `reject`. The JSON audit includes every paired
+case improvement and regression. This is a pilot gate for small validation
+subsets; paper-grade runs should use the full validation split.
