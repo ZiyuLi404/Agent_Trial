@@ -46,12 +46,28 @@ def build_split_manifest(
         "val": ids[train_n:train_n + val_n],
         "test": ids[train_n + val_n:],
     }
+    excluded_ids = {}
+    configured_exclusions = split_config.get("exclude_ids", {})
+    for split_name in SPLIT_NAMES:
+        excluded = [int(case_id) for case_id in configured_exclusions.get(split_name, [])]
+        unknown = sorted(set(excluded) - set(split_ids[split_name]))
+        if unknown:
+            raise ValueError(
+                f"Excluded ids are not in the {split_name} split: {unknown}"
+            )
+        excluded_set = set(excluded)
+        split_ids[split_name] = [
+            case_id for case_id in split_ids[split_name] if case_id not in excluded_set
+        ]
+        excluded_ids[split_name] = excluded
     return {
         "dataset": dataset,
         "num_scenarios": num_scenarios,
         "seed": seed,
         "ratios": dict(zip(SPLIT_NAMES, ratios)),
         "source": split_config.get("_path"),
+        "protocol": split_config.get("protocol", {}),
+        "excluded_ids": excluded_ids,
         "splits": split_ids,
     }
 

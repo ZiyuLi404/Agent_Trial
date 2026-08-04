@@ -72,8 +72,21 @@ def build_result_row(
     )
     doctor_retry_count = int(meta.get("doctor_retry_count", 0) or 0)
     doctor_empty_response = bool(meta.get("doctor_empty_response"))
-    interaction_calls = sum(
-        message["speaker"] in {"Patient", "Measurement"} for message in messages
+    patient_calls = sum(message["speaker"] == "Patient" for message in messages)
+    measurement_calls = sum(
+        message["speaker"] == "Measurement" for message in messages
+    )
+    measurement_meta = meta.get("measurement", {})
+    measurement_mode = measurement_meta.get("mode", "generative")
+    interaction_backend = meta.get("interaction_backend", {})
+    patient_empty_response_count = int(
+        interaction_backend.get("patient_empty_response_count", 0) or 0
+    )
+    measurement_empty_response_count = int(
+        interaction_backend.get("measurement_empty_response_count", 0) or 0
+    )
+    interaction_calls = patient_calls + (
+        measurement_calls if measurement_mode == "generative" else 0
     )
     moderator_calls = int("DIAGNOSIS READY" in response)
     observed_model_calls = 0 if contract_dry_run else (
@@ -117,7 +130,12 @@ def build_result_row(
         # AgentClinic's current moderator is binary. Keep soft equal to hard
         # until a separately validated continuous clinical grader is added.
         "soft": float(bool(correctness)),
-        "agent_ok": not bool(meta.get("doctor_empty_response")) and not contract_dry_run,
+        "agent_ok": (
+            not bool(meta.get("doctor_empty_response"))
+            and patient_empty_response_count == 0
+            and measurement_empty_response_count == 0
+            and not contract_dry_run
+        ),
         "fail_reason": fail_reason,
         "n_turns": n_turns,
         "tests_requested": tests_requested,
@@ -128,6 +146,11 @@ def build_result_row(
             "doctor_empty_response": doctor_empty_response,
             "backend_error_message": str(meta.get("backend_error_message", "") or ""),
             "reasoning_content_present": bool(meta.get("reasoning_content_present")),
+        },
+        "measurement": measurement_meta,
+        "interaction_backend": {
+            "patient_empty_response_count": patient_empty_response_count,
+            "measurement_empty_response_count": measurement_empty_response_count,
         },
         "trajectory": conversation,
         "variant": meta.get("variant", {}),
@@ -324,6 +347,22 @@ def evaluate(args: argparse.Namespace) -> dict:
             ),
             "empty_response_failures": sum(
                 int(bool((row.get("backend") or {}).get("doctor_empty_response")))
+                for row in all_rows
+            ),
+            "patient_empty_responses": sum(
+                int(
+                    (row.get("interaction_backend") or {}).get(
+                        "patient_empty_response_count", 0
+                    ) or 0
+                )
+                for row in all_rows
+            ),
+            "measurement_empty_responses": sum(
+                int(
+                    (row.get("interaction_backend") or {}).get(
+                        "measurement_empty_response_count", 0
+                    ) or 0
+                )
                 for row in all_rows
             ),
         },

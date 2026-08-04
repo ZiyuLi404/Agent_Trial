@@ -30,6 +30,7 @@ def compare_result_sets(
     baseline_rows: dict[str, dict],
     candidate_rows: dict[str, dict],
     minimum_delta: float = 0.0,
+    exclude_invalid: bool = True,
 ) -> dict:
     if minimum_delta < 0:
         raise ValueError("minimum_delta cannot be negative")
@@ -44,11 +45,22 @@ def compare_result_sets(
         )
 
     case_deltas = []
+    excluded_cases = []
     for task_id in sorted(baseline_ids):
         baseline = baseline_rows[task_id]
         candidate = candidate_rows[task_id]
         if baseline.get("correct_text") != candidate.get("correct_text"):
             raise ValueError(f"Gold answer changed for paired case {task_id}")
+        if exclude_invalid and (
+            baseline.get("agent_ok", True) is False
+            or candidate.get("agent_ok", True) is False
+        ):
+            excluded_cases.append({
+                "id": task_id,
+                "baseline_agent_ok": baseline.get("agent_ok", True),
+                "candidate_agent_ok": candidate.get("agent_ok", True),
+            })
+            continue
         baseline_hard = float(baseline["hard"])
         candidate_hard = float(candidate["hard"])
         case_deltas.append({
@@ -62,6 +74,8 @@ def compare_result_sets(
         })
 
     count = len(case_deltas)
+    if count == 0:
+        raise ValueError("Paired gate has no valid cases after infrastructure filtering")
     baseline_hard = sum(row["baseline_hard"] for row in case_deltas) / count
     candidate_hard = sum(row["candidate_hard"] for row in case_deltas) / count
     delta = candidate_hard - baseline_hard
@@ -77,6 +91,9 @@ def compare_result_sets(
 
     return {
         "n": count,
+        "n_total": len(baseline_ids),
+        "n_excluded": len(excluded_cases),
+        "excluded_cases": excluded_cases,
         "baseline_hard": baseline_hard,
         "candidate_hard": candidate_hard,
         "delta": delta,
@@ -95,6 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--baseline", required=True, help="Baseline results.jsonl")
     parser.add_argument("--candidate", required=True, help="Candidate results.jsonl")
     parser.add_argument("--minimum_delta", type=float, default=0.0)
+    parser.add_argument("--include_invalid", action="store_true")
     parser.add_argument("--output", default=None, help="Optional JSON audit path")
     return parser
 
@@ -105,6 +123,7 @@ def main(argv=None) -> None:
         load_results(args.baseline),
         load_results(args.candidate),
         minimum_delta=args.minimum_delta,
+        exclude_invalid=not args.include_invalid,
     )
     if args.output:
         output_path = Path(args.output).expanduser().resolve()

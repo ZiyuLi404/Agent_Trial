@@ -23,6 +23,11 @@ The skill and harness remain independent experimental dimensions. A SkillOpt
 run should optimize the skill while keeping the harness fixed; a later
 HarnessOpt run can do the converse.
 
+For trustworthy skill optimization, use the versioned grounded-measurement
+harness `diagnostic_efficiency/v001.toml`. It preserves the v000 doctor policy
+but replaces generative measurement lookup with deterministic source lookup.
+Missing tests return `RESULTS UNAVAILABLE` rather than fabricated normal values.
+
 ## Safe contract dry-run
 
 From the repository root:
@@ -64,6 +69,10 @@ python -m change_generators.skills.optimizers.skillopt_lite.evaluator \
 Run validation for selecting a skill version and reserve test for the final
 comparison. The default split is deterministic 20% train, 20% validation, and
 60% test. When `--eval_limit` is set, a fixed seed samples cases from that split.
+
+After the initial five-case debug pilot, use `splits_clean_v1.toml` for training
+runs. It keeps the original train/test sets but excludes the five validation
+cases whose contents were exposed during debugging, leaving 16 clean gate cases.
 
 ## Output contract
 

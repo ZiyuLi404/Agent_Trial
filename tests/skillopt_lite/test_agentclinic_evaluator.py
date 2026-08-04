@@ -29,6 +29,9 @@ SKILL_PATH = (
     / "v000.md"
 )
 SPLIT_CONFIG = REPO_ROOT / "experiments" / "agentclinic_skillopt" / "splits.toml"
+CLEAN_SPLIT_CONFIG = (
+    REPO_ROOT / "experiments" / "agentclinic_skillopt" / "splits_clean_v1.toml"
+)
 
 
 class SkillOptLiteSplitTest(unittest.TestCase):
@@ -58,6 +61,21 @@ class SkillOptLiteSplitTest(unittest.TestCase):
         config = load_split_config(SPLIT_CONFIG)
         with self.assertRaisesRegex(ValueError, "split config expects 107"):
             build_split_manifest("MedQA", 106, config)
+
+    def test_clean_protocol_excludes_only_exposed_validation_cases(self):
+        standard = build_split_manifest(
+            "MedQA", 107, load_split_config(SPLIT_CONFIG)
+        )
+        clean = build_split_manifest(
+            "MedQA", 107, load_split_config(CLEAN_SPLIT_CONFIG)
+        )
+        exposed = {56, 68, 80, 30, 44}
+
+        self.assertEqual(set(standard["splits"]["val"]) - exposed,
+                         set(clean["splits"]["val"]))
+        self.assertEqual(len(clean["splits"]["val"]), 16)
+        self.assertEqual(set(clean["excluded_ids"]["val"]), exposed)
+        self.assertEqual(clean["protocol"]["id"], "clean_v1")
 
 
 class SkillOptLiteSampleTest(unittest.TestCase):
@@ -106,6 +124,28 @@ class SkillOptLiteGateTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "identical ids"):
             compare_result_sets(baseline, candidate)
 
+    def test_paired_gate_excludes_infrastructure_invalid_pairs(self):
+        baseline = {
+            "valid": {"id": "valid", "hard": 1, "correct_text": "A"},
+            "noisy": {
+                "id": "noisy",
+                "hard": 0,
+                "correct_text": "B",
+                "agent_ok": False,
+            },
+        }
+        candidate = {
+            "valid": {"id": "valid", "hard": 1, "correct_text": "A"},
+            "noisy": {"id": "noisy", "hard": 1, "correct_text": "B"},
+        }
+
+        report = compare_result_sets(baseline, candidate)
+
+        self.assertEqual(report["n"], 1)
+        self.assertEqual(report["n_total"], 2)
+        self.assertEqual(report["n_excluded"], 1)
+        self.assertEqual(report["delta"], 0.0)
+
 
 class EvaluatorTelemetryTest(unittest.TestCase):
     class Scenario:
@@ -139,6 +179,25 @@ class EvaluatorTelemetryTest(unittest.TestCase):
         self.assertEqual(row["observed_model_calls"], 5)
         self.assertEqual(row["backend"]["doctor_retry_count"], 1)
         self.assertTrue(row["backend"]["reasoning_content_present"])
+
+    def test_grounded_measurement_is_not_counted_as_a_model_call(self):
+        row, _ = build_result_row(
+            dataset="MedQA",
+            split="val",
+            case_id=1,
+            scenario=self.Scenario(),
+            diagnosis="DIAGNOSIS READY: Diagnosis A",
+            correctness=True,
+            dialogue=(
+                "Doctor: REQUEST TEST: CBC\n"
+                "Measurement: RESULTS: source-backed CBC\n"
+                "Doctor: DIAGNOSIS READY: Diagnosis A\n"
+            ),
+            meta={"measurement": {"mode": "grounded_lookup"}},
+            contract_dry_run=False,
+        )
+
+        self.assertEqual(row["observed_model_calls"], 3)
 
 
 class AgentClinicSkillOptEvaluatorContractTest(unittest.TestCase):

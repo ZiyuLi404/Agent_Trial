@@ -1,0 +1,19 @@
+seed = 42
+
+[protocol]
+id = "clean_v1"
+reason = "Reserve the five validation cases exposed during the v001 debug pilot"
+
+[ratios]
+train = 2
+val = 2
+test = 6
+
+[expected_sizes]
+MedQA = 107
+MedQA_Ext = 214
+NEJM = 15
+NEJM_Ext = 120
+
+[exclude_ids]
+val = [56, 68, 80, 30, 44]

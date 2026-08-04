@@ -61,3 +61,10 @@ class HarnessArtifact:
         if not isinstance(doctor, dict):
             raise ValueError("Harness [doctor] section must be a table")
         return doctor
+
+    @property
+    def measurement_config(self) -> dict:
+        measurement = self.config.get("measurement", {})
+        if not isinstance(measurement, dict):
+            raise ValueError("Harness [measurement] section must be a table")
+        return measurement

@@ -2,8 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from AgentClinic.agentclinic import DoctorAgent
+from AgentClinic.agentclinic import DoctorAgent, MeasurementAgent
 from agent_system_adapters.agentclinic import AgentClinicAdapter
+from agent_system_adapters.agentclinic.grounded_measurement import GroundedMeasurementAgent
 from agent_system_adapters.agentclinic.skill_doctor import SkillDoctorAgent
 from change_generators.harnesses import HarnessArtifact
 from change_generators.skills import SkillArtifact
@@ -12,6 +13,31 @@ from change_generators.skills import SkillArtifact
 class DummyScenario:
     def examiner_information(self):
         return "A patient with fatigue."
+
+    def exam_information(self):
+        return {
+            "Vital_Signs": {
+                "Blood_Pressure": "137/98 mmHg",
+                "Heart_Rate": "120/min",
+            },
+            "tests": {
+                "Coagulation_Test_Results": {
+                    "ACT": "52.0 s (prolonged)",
+                    "PT": "14.0 s",
+                },
+                "Blood_Work": {
+                    "Bilirubin": "25 mg/dL (elevated)",
+                    "AST": "600 IU/L (elevated)",
+                    "ALT": "650 IU/L (elevated)",
+                    "INR": "1.5 (elevated)",
+                },
+                "Imaging": {
+                    "Pelvic_Ultrasound": {
+                        "Findings": "Left adnexal mass",
+                    }
+                },
+            }
+        }
 
 
 class AgentClinicSkillAdapterTest(unittest.TestCase):
@@ -103,6 +129,66 @@ class AgentClinicSkillAdapterTest(unittest.TestCase):
         self.assertEqual(doctor.MAX_INFS, 5)
         self.assertEqual(metadata["skill"]["version"], "v000")
         self.assertEqual(metadata["harness"]["version"], "v001")
+
+    def test_grounded_measurement_never_converts_missing_factor_to_normal(self):
+        measurement = GroundedMeasurementAgent(self.scenario)
+
+        response = measurement.inference_measurement(
+            "REQUEST TEST: aPTT and Factor VIII activity level"
+        )
+
+        self.assertIn("RESULTS UNAVAILABLE", response)
+        self.assertIn("Do not infer a normal result", response)
+        self.assertNotIn("NORMAL READINGS", response)
+        self.assertEqual(measurement.metadata()["unavailable_count"], 1)
+
+    def test_grounded_measurement_returns_only_source_backed_values(self):
+        measurement = GroundedMeasurementAgent(self.scenario)
+
+        coagulation = measurement.inference_measurement(
+            "REQUEST TEST: coagulation studies including ACT and PT"
+        )
+        liver = measurement.inference_measurement(
+            "REQUEST TEST: liver function panel and INR"
+        )
+        vital_signs = measurement.inference_measurement("REQUEST TEST: vital signs")
+        pelvic = measurement.inference_measurement(
+            "REQUEST TEST: transvaginal pelvis ultrasound"
+        )
+
+        self.assertIn('"Coagulation_Test_Results.ACT": "52.0 s (prolonged)"', coagulation)
+        self.assertIn('"Coagulation_Test_Results.PT": "14.0 s"', coagulation)
+        self.assertNotIn("Factor VIII", coagulation)
+        self.assertIn('"Blood_Work.ALT": "650 IU/L (elevated)"', liver)
+        self.assertIn('"Blood_Work.INR": "1.5 (elevated)"', liver)
+        self.assertIn('"Vital_Signs.Heart_Rate": "120/min"', vital_signs)
+        self.assertIn(
+            '"Imaging.Pelvic_Ultrasound.Findings": "Left adnexal mass"',
+            pelvic,
+        )
+
+    def test_measurement_mode_is_versioned_by_harness(self):
+        artifact_root = (
+            Path(__file__).resolve().parents[2]
+            / "change_generators"
+            / "harnesses"
+            / "artifacts"
+            / "agentclinic"
+            / "diagnostic_efficiency"
+        )
+        v000 = AgentClinicAdapter(
+            harness_artifact=HarnessArtifact.load(artifact_root / "v000.toml")
+        )
+        v001 = AgentClinicAdapter(
+            harness_artifact=HarnessArtifact.load(artifact_root / "v001.toml")
+        )
+        config = {**self.config, "measurement_llm": "unused"}
+
+        self.assertIs(type(v000.build_measurement(self.scenario, config)), MeasurementAgent)
+        self.assertIs(
+            type(v001.build_measurement(self.scenario, config)),
+            GroundedMeasurementAgent,
+        )
 
 
 if __name__ == "__main__":

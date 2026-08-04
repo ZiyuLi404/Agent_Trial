@@ -1,4 +1,5 @@
-from AgentClinic.agentclinic import DoctorAgent, load_doctor_prompt_template
+from AgentClinic.agentclinic import DoctorAgent, MeasurementAgent, load_doctor_prompt_template
+from agent_system_adapters.agentclinic.grounded_measurement import GroundedMeasurementAgent
 from agent_system_adapters.agentclinic.skill_doctor import SkillDoctorAgent
 from change_generators.harnesses import HarnessArtifact
 from change_generators.skills import SkillArtifact
@@ -55,12 +56,31 @@ class AgentClinicAdapter:
             return DoctorAgent(**kwargs)
         return SkillDoctorAgent(**kwargs, skill_artifact=self.skill_artifact)
 
+    def build_measurement(self, scenario, config):
+        measurement_config = (
+            self.harness_artifact.measurement_config
+            if self.harness_artifact is not None else {}
+        )
+        mode = measurement_config.get("mode", "generative")
+        if mode == "generative":
+            return MeasurementAgent(
+                scenario=scenario,
+                backend_str=config["measurement_llm"],
+            )
+        if mode == "grounded_lookup":
+            return GroundedMeasurementAgent(
+                scenario=scenario,
+                missing_policy=measurement_config.get("missing_policy", "unavailable"),
+            )
+        raise ValueError(f"Unknown measurement mode: {mode!r}")
+
     def evaluate_case(self, scenario, config):
         effective_config = self.effective_config(config)
         result = run_case(
             scenario,
             effective_config,
             doctor_factory=self.build_doctor,
+            measurement_factory=self.build_measurement,
         )
         diagnosis, correctness, dialogue, meta = result
         meta = {

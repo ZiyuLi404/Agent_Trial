@@ -23,7 +23,7 @@ LOADERS = {
 }
 
 
-def run_case(scenario, config, doctor_factory=None):
+def run_case(scenario, config, doctor_factory=None, measurement_factory=None):
     """Run one AgentClinic case.
 
     Returns (diagnosis, correctness, full_dialogue, meta) where meta contains:
@@ -36,7 +36,10 @@ def run_case(scenario, config, doctor_factory=None):
     moderator_llm = config["moderator_llm"]
     total_inferences = config.get("total_inferences", 20)
 
-    meas_agent = MeasurementAgent(scenario=scenario, backend_str=measurement_llm)
+    if measurement_factory is None:
+        meas_agent = MeasurementAgent(scenario=scenario, backend_str=measurement_llm)
+    else:
+        meas_agent = measurement_factory(scenario, config)
     patient_agent = PatientAgent(scenario=scenario, backend_str=patient_llm)
     if doctor_factory is None:
         doctor_agent = DoctorAgent(
@@ -54,6 +57,8 @@ def run_case(scenario, config, doctor_factory=None):
     correctness = False
     doctor_retry_count = 0
     doctor_empty_response = False
+    patient_empty_response_count = 0
+    measurement_empty_response_count = 0
     backend_error_message = ""
     _last_reasoning_present = False
     _last_reasoning_debug = ""
@@ -112,11 +117,15 @@ def run_case(scenario, config, doctor_factory=None):
 
         if "REQUEST TEST" in doctor_dialogue:
             pi_dialogue = meas_agent.inference_measurement(doctor_dialogue)
+            if _is_empty(pi_dialogue):
+                measurement_empty_response_count += 1
             full_dialogue += "Measurement: " + pi_dialogue + "\n"
             print("Measurement:", pi_dialogue)
             patient_agent.add_hist(pi_dialogue)
         else:
             pi_dialogue = patient_agent.inference_patient(doctor_dialogue)
+            if _is_empty(pi_dialogue):
+                patient_empty_response_count += 1
             full_dialogue += "Patient: " + pi_dialogue + "\n"
             print("Patient:", pi_dialogue)
             meas_agent.add_hist(pi_dialogue)
@@ -135,6 +144,16 @@ def run_case(scenario, config, doctor_factory=None):
         "backend_error_message": backend_error_message,
         "reasoning_content_present": _last_reasoning_present,
         "doctor_reasoning_debug": _last_reasoning_debug,
+        "measurement": (
+            meas_agent.metadata() if hasattr(meas_agent, "metadata") else {
+                "mode": "generative",
+                "request_count": full_dialogue.count("Measurement:"),
+            }
+        ),
+        "interaction_backend": {
+            "patient_empty_response_count": patient_empty_response_count,
+            "measurement_empty_response_count": measurement_empty_response_count,
+        },
     }
     return final_diagnosis, correctness, full_dialogue, meta
 
