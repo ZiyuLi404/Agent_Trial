@@ -3,8 +3,9 @@
 
 Each JSON file in ``--data_dir`` represents one deployed model version. Files
 are processed in sorted filename order, as in ``accuracy_summary.py``. When all
-versions contain the same patient IDs, their contiguous, disjoint buckets are
-assigned in version order (the convention behind ``accuracy_by_25_cases.csv``).
+versions contain the same patient IDs, the full stream is partitioned into
+near-equal contiguous version bundles and assigned in version order. Any
+remainder is assigned to the earliest bundles, so every case is used.
 Otherwise, each file's complete scored stream is treated as fresh data.
 
 The similarity CSV may be model-level or use the project's replicate labels
@@ -130,30 +131,57 @@ def _load_scored_model_files(
     return loaded
 
 
+def version_bundle_slices(
+    total_cases: int, version_count: int
+) -> list[tuple[int, int]]:
+    """Partition all cases into near-equal contiguous version bundles.
+
+    Any remainder is assigned one case at a time to the earliest bundles. For
+    example, 50 cases across 3 model versions yields sizes 17, 17, and 16.
+    """
+    if total_cases <= 0 or version_count <= 0:
+        raise ValueError("total_cases and version_count must be positive")
+    if total_cases < version_count:
+        raise ValueError(
+            f"Cannot split {total_cases} cases across {version_count} versions"
+        )
+    base_size, remainder = divmod(total_cases, version_count)
+    sizes = [
+        base_size + (1 if index < remainder else 0)
+        for index in range(version_count)
+    ]
+    slices = []
+    start = 0
+    for size in sizes:
+        stop = start + size
+        slices.append((start, stop))
+        start = stop
+    return slices
+
+
 def load_model_outcome_buckets(data_dir: Path) -> dict[str, list[ModelOutcomes]]:
     """Return every available fresh-patient bucket for every model version."""
     loaded = _load_scored_model_files(data_dir)
 
-    # The current project evaluates every model on the same 100 ordered cases,
-    # then stores fresh accuracy as bucket1 for version 1, bucket2 for version 2,
-    # etc. Detect that layout from explicit patient IDs and recover the exact
-    # fresh outcome streams needed for sequential Bayesian updating.
+    # When every model shares one ordered patient pool, partition the full pool
+    # into one near-equal contiguous bundle per deployed version. This consumes
+    # every case even when the total is not divisible by the number of models
+    # (for example, 50 cases / 3 versions -> 17, 17, 16).
     reference_ids = loaded[0][2]
     shared_patient_pool = (
         reference_ids is not None
         and all(case_ids == reference_ids for _, _, case_ids in loaded)
-        and len(reference_ids) % len(loaded) == 0
     )
     buckets_by_model: dict[str, list[ModelOutcomes]] = {}
     if shared_patient_pool:
-        bucket_size = len(reference_ids) // len(loaded)
+        bundle_slices = version_bundle_slices(len(reference_ids), len(loaded))
         for model, rewards, _ in loaded:
             buckets_by_model[model] = [
                 ModelOutcomes(
                     model=model,
-                    rewards=rewards[index * bucket_size : (index + 1) * bucket_size],
+                    rewards=rewards[start:stop],
                 )
-                for index in range(len(loaded))
+                for start, stop in bundle_slices
             ]
     else:
         buckets_by_model = {

@@ -12,6 +12,7 @@ from history_borrowing.algorithm_2.bayesian_pseudo_posterior import (
     build_all_orders_report,
     construct_history_prior,
     online_posterior_trajectory,
+    version_bundle_slices,
 )
 
 
@@ -54,6 +55,11 @@ class BayesianPseudoPosteriorTests(unittest.TestCase):
         self.assertAlmostEqual(lower, 0.025, places=6)
         self.assertAlmostEqual(upper, 0.975, places=6)
         self.assertAlmostEqual(beta_wasserstein_1(2.0, 3.0, 2.0, 3.0), 0.0)
+
+    def test_version_bundles_use_every_nondivisible_case(self):
+        slices = version_bundle_slices(50, 3)
+        self.assertEqual(slices, [(0, 17), (17, 34), (34, 50)])
+        self.assertEqual([stop - start for start, stop in slices], [17, 17, 16])
 
     def test_all_orders_report_contains_every_order_and_step(self):
         buckets = {
