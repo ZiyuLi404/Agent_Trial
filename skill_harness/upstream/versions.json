@@ -1,0 +1,10 @@
+{
+  "SkillOpt": {
+    "url": "https://github.com/microsoft/SkillOpt.git",
+    "commit": "8a4c96a23639eee6ce19de7579ac9006b6dd4a2a"
+  },
+  "SkillOpt-Lite": {
+    "url": "https://github.com/EvolvingLMMs-Lab/SkillOpt-Lite.git",
+    "commit": "4cb4eeef1f95375a9179737ab94cf5e64b9647c6"
+  }
+}

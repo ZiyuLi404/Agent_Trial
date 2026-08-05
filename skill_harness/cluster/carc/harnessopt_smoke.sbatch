@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH --job-name=ac-harness-smoke
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=16G
+#SBATCH --time=02:00:00
+#SBATCH --output=skill_harness/results/carc/%x-%j.out
+
+set -euo pipefail
+: "${AGENT_TRIAL_REPO:?Set AGENT_TRIAL_REPO to the Agent_Trial_refactor checkout}"
+cd "$AGENT_TRIAL_REPO"
+python -m skill_harness.methods.harnessopt.evaluator \
+  --split train --eval_limit 5 --limit 5

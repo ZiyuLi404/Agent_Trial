@@ -1,0 +1,50 @@
+model:
+  backend: openai_compatible
+  optimizer: deepseek-v4-pro
+  target: deepseek-v4-pro
+  optimizer_backend: openai_compatible
+  target_backend: openai_compatible
+  reasoning_effort: medium
+
+train:
+  num_epochs: 1
+  train_size: 21
+  batch_size: 21
+  accumulation: 1
+  seed: 42
+
+gradient:
+  minibatch_size: 7
+  merge_batch_size: 4
+  analyst_workers: 1
+  max_analyst_rounds: 3
+  failure_only: false
+
+optimizer:
+  learning_rate: 4
+  min_learning_rate: 2
+  lr_scheduler: constant
+  lr_control_mode: fixed
+  skill_update_mode: patch
+  use_slow_update: false
+  use_meta_skill: false
+
+evaluation:
+  use_gate: true
+  sel_env_num: 0
+  test_env_num: 0
+  eval_test: false
+
+env:
+  name: agentclinic
+  skill_init: skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md
+  manifest_path: skill_harness/experiments/agentclinic/manifests/medqa_clean_v1.json
+  agentclinic_repo: .
+  doctor_llm: deepseek-v4-pro
+  patient_llm: deepseek-v4-flash
+  measurement_llm: deepseek-v4-flash
+  moderator_llm: deepseek-v4-flash
+  total_inferences: 8
+  workers: 1
+  contract_dry_run: false
+  out_root: skill_harness/results/skillopt_original/one_epoch

@@ -30,7 +30,6 @@ results/**/best_model/
 
 # ── 归档的可再生产物（png/pptx/zip 等，留盘不入库）──
 generated_outputs/
-results/skillopt_workspaces/
 
 # ── 顶层运行日志（旧位置，逐步迁入 results/）──
 trial_log.jsonl

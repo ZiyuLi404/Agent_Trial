@@ -1,0 +1,10 @@
+results/
+upstream/checkouts/
+**/__pycache__/
+*.pyc
+.venv/
+
+# Version locks and experiment contracts are source, not generated results.
+!upstream/versions.json
+!experiments/agentclinic/manifests/medqa_clean_v1.json
+!methods/harnessopt/allowlist.json

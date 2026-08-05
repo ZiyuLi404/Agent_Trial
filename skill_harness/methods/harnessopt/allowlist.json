@@ -1,0 +1,17 @@
+{
+  "editable": [
+    "skill_harness/methods/harnessopt/workspace/agentclinic/adapter.py",
+    "skill_harness/methods/harnessopt/workspace/agentclinic/doctor.py",
+    "skill_harness/methods/harnessopt/workspace/agentclinic/measurement.py",
+    "skill_harness/methods/harnessopt/workspace/agentclinic/runner.py"
+  ],
+  "read_only": [
+    "AgentClinic/",
+    "trial/",
+    "skill_harness/artifacts/",
+    "skill_harness/common/",
+    "skill_harness/methods/skillopt_original/",
+    "skill_harness/methods/skillopt_lite/",
+    "skill_harness/experiments/agentclinic/manifests/"
+  ]
+}
