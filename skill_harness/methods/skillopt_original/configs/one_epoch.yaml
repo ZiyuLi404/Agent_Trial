@@ -37,8 +37,8 @@ evaluation:
 
 env:
   name: agentclinic
-  skill_init: skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md
-  manifest_path: skill_harness/experiments/agentclinic/manifests/medqa_clean_v1.json
+  skill_init: skill_harness/artifacts/seeds/diagnostic_reasoning/initial_blank.md
+  manifest_path: skill_harness/experiments/agentclinic/manifests/medqa_pure_v1.json
   agentclinic_repo: .
   doctor_llm: deepseek-v4-pro
   patient_llm: deepseek-v4-flash

@@ -30,8 +30,8 @@ skill_harness/
   the four Python files recorded in `methods/harnessopt/allowlist.json`. The
   skill and original AgentClinic source are read-only.
 
-The baseline uses AgentClinic's original generative measurement agent. The
-grounded measurement TOML is retained only as an explicitly selected ablation.
+The baseline uses AgentClinic's original generative measurement agent. No
+measurement or harness ablation from the discarded experiments is retained.
 
 ## Paper code
 
@@ -57,7 +57,7 @@ SkillOpt-Lite contract test:
 
 ```bash
 python -m skill_harness.methods.skillopt_lite.evaluator \
-  --skill skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md \
+  --skill skill_harness/artifacts/seeds/diagnostic_reasoning/initial_blank.md \
   --split train --eval_limit 2 --limit 2 --contract_dry_run
 ```
 
@@ -68,6 +68,6 @@ python -m skill_harness.methods.harnessopt.evaluator \
   --split train --eval_limit 2 --limit 2 --contract_dry_run
 ```
 
-New outputs go under `skill_harness/results/`. Legacy result directories from
-earlier smoke runs are intentionally left where they were to avoid moving or
-deleting experimental data.
+New outputs go under `skill_harness/results/`. The previous skill experiments,
+manual seed, split files, and run outputs were deleted before `pure_v1` was
+created.

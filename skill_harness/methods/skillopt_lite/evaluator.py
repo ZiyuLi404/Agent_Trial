@@ -16,16 +16,16 @@ from skill_harness.common.agentclinic.evaluation import (
     build_result_row,
     write_prediction_artifacts,
 )
+from skill_harness.common.manifest import load_manifest, select_ids
 from skill_harness.methods.skillopt_lite.samples import export_samples
-from skill_harness.methods.skillopt_lite.splits import (
-    build_split_manifest,
-    load_split_config,
-    select_case_ids,
-)
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_SPLIT_CONFIG = (
-    REPO_ROOT / "skill_harness" / "experiments" / "agentclinic"
-    / "skillopt_lite" / "splits.toml"
+DEFAULT_MANIFEST = (
+    REPO_ROOT
+    / "skill_harness"
+    / "experiments"
+    / "agentclinic"
+    / "manifests"
+    / "medqa_pure_v1.json"
 )
 
 
@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skill", required=True, help="Candidate skill markdown path")
     parser.add_argument("--harness", default=None, help="Optional fixed harness TOML path")
     parser.add_argument("--split", choices=["train", "val", "test"], default="test")
-    parser.add_argument("--split_config", default=str(DEFAULT_SPLIT_CONFIG))
+    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
     parser.add_argument("--dataset", default="MedQA",
                         choices=["MedQA", "MedQA_Ext", "NEJM", "NEJM_Ext"])
     parser.add_argument("--eval_limit", type=int, default=0,
@@ -69,11 +69,12 @@ def evaluate(args: argparse.Namespace) -> dict:
 
     loader_cls = LOADERS[args.dataset]
     loader = loader_cls()
-    split_config = load_split_config(args.split_config)
-    split_manifest = build_split_manifest(
-        args.dataset, loader.num_scenarios, split_config
+    split_manifest = load_manifest(
+        args.manifest,
+        dataset=args.dataset,
+        num_scenarios=loader.num_scenarios,
     )
-    selected_ids = select_case_ids(
+    selected_ids = select_ids(
         split_manifest, args.split, args.eval_limit, args.seed
     )
 

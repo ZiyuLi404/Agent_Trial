@@ -6,5 +6,5 @@ upstream/checkouts/
 
 # Version locks and experiment contracts are source, not generated results.
 !upstream/versions.json
-!experiments/agentclinic/manifests/medqa_clean_v1.json
+!experiments/agentclinic/manifests/medqa_pure_v1.json
 !methods/harnessopt/allowlist.json

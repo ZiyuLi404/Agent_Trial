@@ -9,5 +9,5 @@ set -euo pipefail
 : "${AGENT_TRIAL_REPO:?Set AGENT_TRIAL_REPO to the Agent_Trial_refactor checkout}"
 cd "$AGENT_TRIAL_REPO"
 python -m skill_harness.methods.skillopt_lite.evaluator \
-  --skill skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md \
+  --skill skill_harness/artifacts/seeds/diagnostic_reasoning/initial_blank.md \
   --split train --eval_limit 5 --limit 5

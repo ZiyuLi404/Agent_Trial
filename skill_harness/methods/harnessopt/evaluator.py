@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import random
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from skill_harness.common.agentclinic.evaluation import (
     write_prediction_artifacts,
 )
 from skill_harness.common.sample_export import export_samples
+from skill_harness.common.manifest import load_manifest, select_ids
 from skill_harness.methods.harnessopt.workspace.agentclinic import (
     HarnessOptAgentClinicAdapter,
 )
@@ -29,7 +29,7 @@ DEFAULT_MANIFEST = (
     / "experiments"
     / "agentclinic"
     / "manifests"
-    / "medqa_clean_v1.json"
+    / "medqa_pure_v1.json"
 )
 DEFAULT_SKILL = (
     PROJECT_ROOT
@@ -37,7 +37,7 @@ DEFAULT_SKILL = (
     / "artifacts"
     / "seeds"
     / "diagnostic_reasoning"
-    / "v000.md"
+    / "initial_blank.md"
 )
 
 
@@ -72,11 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
 def evaluate(args: argparse.Namespace) -> dict:
     skill = SkillArtifact.load(args.skill)
     adapter = HarnessOptAgentClinicAdapter(skill_artifact=skill)
-    manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
-    case_ids = list(manifest["splits"][args.split])
-    if args.eval_limit and args.eval_limit < len(case_ids):
-        case_ids = random.Random(args.seed).sample(case_ids, args.eval_limit)
     loader = LOADERS["MedQA"]()
+    manifest = load_manifest(
+        args.manifest, dataset="MedQA", num_scenarios=loader.num_scenarios
+    )
+    case_ids = select_ids(manifest, args.split, args.eval_limit, args.seed)
 
     workspace = Path(args.workspace).resolve() if args.workspace else (
         PROJECT_ROOT / "skill_harness" / "results" / "harnessopt" / "workspace"

@@ -1,35 +1,18 @@
-# AgentClinic variant experiment
+# AgentClinic paired comparison
 
-This experiment is separate from `AgentClinic/` and the stable
-`trial/run_trial.py` CLI. The external adapter applies a versioned skill, a
-versioned harness, or both, and compares that variant against the unchanged
-AgentClinic baseline on the same cases.
+This utility compares the unchanged AgentClinic baseline against an explicitly
+provided skill or harness artifact on identical case IDs. New experiments begin
+with the neutral blank seed; no artifact from the discarded runs remains.
 
-Skill-only dry run:
-
-```bash
-python -m skill_harness.experiments.agentclinic.compare \
-  --cases 0 \
-  --skill_path skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md \
-  --dry_run
-```
-
-Harness-only dry run:
+Skill-only contract check:
 
 ```bash
 python -m skill_harness.experiments.agentclinic.compare \
   --cases 0 \
-  --harness_path skill_harness/artifacts/harnesses/baseline/diagnostic_efficiency_v000.toml \
+  --skill_path skill_harness/artifacts/seeds/diagnostic_reasoning/initial_blank.md \
   --dry_run
 ```
 
-Combined skill+harness live comparison:
-
-```bash
-python -m skill_harness.experiments.agentclinic.compare \
-  --doctor_llm deepseek-v4-pro \
-  --cases 0-19 \
-  --skill_path skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md \
-  --harness_path skill_harness/artifacts/harnesses/baseline/diagnostic_efficiency_v000.toml \
-  --output_dir skill_harness/results/variant_experiments/agentclinic/combined_v000
-```
+Formal SkillOpt runs should use the frozen IDs in
+`manifests/medqa_pure_v1.json`; this free-form comparison utility is for
+diagnostics, not validation or test reporting.

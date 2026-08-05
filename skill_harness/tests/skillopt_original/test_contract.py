@@ -18,7 +18,7 @@ def _load_original_modules():
 def test_manifest_contract_and_parallel_dry_rollout(tmp_path):
     dataloader_cls, run_batch = _load_original_modules()
     dataloader = dataloader_cls(
-        "skill_harness/experiments/agentclinic/manifests/medqa_clean_v1.json"
+        "skill_harness/experiments/agentclinic/manifests/medqa_pure_v1.json"
     )
     dataloader.setup({})
     items = dataloader.build_train_batch(2, seed=7).payload

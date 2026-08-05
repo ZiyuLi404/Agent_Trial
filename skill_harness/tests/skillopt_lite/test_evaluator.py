@@ -1,4 +1,5 @@
 import json
+import random
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,17 +7,13 @@ from unittest.mock import patch
 
 from skill_harness.common.agentclinic import AgentClinicAdapter
 from skill_harness.common.agentclinic.evaluation import build_result_row
+from skill_harness.common.manifest import load_manifest, select_ids
 from skill_harness.methods.skillopt_lite.evaluator import (
     build_parser,
     evaluate,
 )
 from skill_harness.methods.skillopt_lite.gate import compare_result_sets
 from skill_harness.methods.skillopt_lite.samples import export_samples
-from skill_harness.methods.skillopt_lite.splits import (
-    build_split_manifest,
-    load_split_config,
-    select_case_ids,
-)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -26,23 +23,22 @@ SKILL_PATH = (
     / "artifacts"
     / "seeds"
     / "diagnostic_reasoning"
-    / "v000.md"
+    / "initial_blank.md"
 )
-SPLIT_CONFIG = (
-    REPO_ROOT / "skill_harness" / "experiments" / "agentclinic"
-    / "skillopt_lite" / "splits.toml"
-)
-CLEAN_SPLIT_CONFIG = (
-    REPO_ROOT / "skill_harness" / "experiments" / "agentclinic"
-    / "skillopt_lite" / "splits_clean_v1.toml"
+MANIFEST = (
+    REPO_ROOT
+    / "skill_harness"
+    / "experiments"
+    / "agentclinic"
+    / "manifests"
+    / "medqa_pure_v1.json"
 )
 
 
 class SkillOptLiteSplitTest(unittest.TestCase):
     def test_medqa_split_is_deterministic_disjoint_and_complete(self):
-        config = load_split_config(SPLIT_CONFIG)
-        first = build_split_manifest("MedQA", 107, config)
-        second = build_split_manifest("MedQA", 107, config)
+        first = load_manifest(MANIFEST, dataset="MedQA", num_scenarios=107)
+        second = load_manifest(MANIFEST, dataset="MedQA", num_scenarios=107)
 
         self.assertEqual(first["splits"], second["splits"])
         self.assertEqual(len(first["splits"]["train"]), 21)
@@ -55,31 +51,25 @@ class SkillOptLiteSplitTest(unittest.TestCase):
         self.assertTrue(split_sets[1].isdisjoint(split_sets[2]))
         self.assertEqual(set.union(*split_sets), set(range(107)))
 
-        sample = select_case_ids(first, "train", eval_limit=3, sample_seed=17)
+        sample = select_ids(first, "train", limit=3, seed=17)
         self.assertEqual(
             sample,
-            select_case_ids(first, "train", eval_limit=3, sample_seed=17),
+            select_ids(first, "train", limit=3, seed=17),
         )
 
     def test_expected_dataset_size_is_guarded(self):
-        config = load_split_config(SPLIT_CONFIG)
-        with self.assertRaisesRegex(ValueError, "split config expects 107"):
-            build_split_manifest("MedQA", 106, config)
+        with self.assertRaisesRegex(ValueError, "expects 107 scenarios"):
+            load_manifest(MANIFEST, dataset="MedQA", num_scenarios=106)
 
-    def test_clean_protocol_excludes_only_exposed_validation_cases(self):
-        standard = build_split_manifest(
-            "MedQA", 107, load_split_config(SPLIT_CONFIG)
-        )
-        clean = build_split_manifest(
-            "MedQA", 107, load_split_config(CLEAN_SPLIT_CONFIG)
-        )
-        exposed = {56, 68, 80, 30, 44}
-
-        self.assertEqual(set(standard["splits"]["val"]) - exposed,
-                         set(clean["splits"]["val"]))
-        self.assertEqual(len(clean["splits"]["val"]), 16)
-        self.assertEqual(set(clean["excluded_ids"]["val"]), exposed)
-        self.assertEqual(clean["protocol"]["id"], "clean_v1")
+    def test_pure_protocol_uses_every_case_once(self):
+        manifest = load_manifest(MANIFEST, dataset="MedQA", num_scenarios=107)
+        self.assertEqual(manifest["protocol"]["id"], "pure_v1")
+        self.assertNotIn("excluded_prior_exposure", manifest)
+        shuffled = list(range(107))
+        random.Random(manifest["protocol"]["seed"]).shuffle(shuffled)
+        self.assertEqual(manifest["splits"]["train"], shuffled[:21])
+        self.assertEqual(manifest["splits"]["val"], shuffled[21:42])
+        self.assertEqual(manifest["splits"]["test"], shuffled[42:])
 
 
 class SkillOptLiteSampleTest(unittest.TestCase):
@@ -184,7 +174,7 @@ class EvaluatorTelemetryTest(unittest.TestCase):
         self.assertEqual(row["backend"]["doctor_retry_count"], 1)
         self.assertTrue(row["backend"]["reasoning_content_present"])
 
-    def test_grounded_measurement_is_not_counted_as_a_model_call(self):
+    def test_non_model_measurement_is_not_counted_as_a_model_call(self):
         row, _ = build_result_row(
             dataset="MedQA",
             split="val",
@@ -214,8 +204,8 @@ class AgentClinicSkillOptEvaluatorContractTest(unittest.TestCase):
                 [
                     "--skill",
                     str(SKILL_PATH),
-                    "--split_config",
-                    str(SPLIT_CONFIG),
+                    "--manifest",
+                    str(MANIFEST),
                     "--dataset",
                     "MedQA",
                     "--split",

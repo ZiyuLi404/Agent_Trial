@@ -7,7 +7,7 @@ from skill_harness.methods.harnessopt.workspace.agentclinic import (
 
 def test_round_zero_harness_matches_common_adapter_prompt():
     skill = SkillArtifact.load(
-        "skill_harness/artifacts/seeds/diagnostic_reasoning/v000.md"
+        "skill_harness/artifacts/seeds/diagnostic_reasoning/initial_blank.md"
     )
     scenario = LOADERS["MedQA"]().get_scenario(id=0)
     config = {"doctor_llm": "deepseek-v4-pro", "total_inferences": 8}
